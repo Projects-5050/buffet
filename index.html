@@ -961,6 +961,30 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradi
 #v-menu .card .soldout-chip{font-size:11px}
 #v-menu .card.soldout .art{filter:grayscale(.8) brightness(.8)}
 @media (max-width:380px){#v-menu .card .c-desc{display:none}}
+
+/* ================= Order PDF (invoice) ================= */
+#pdf-stage{position:fixed;left:-12000px;top:0;pointer-events:none}
+.pv{letter-spacing:0;word-spacing:0;width:794px;height:1123px;background:#fff;color:#2D2D35;font-family:"IBM Plex Sans Arabic",system-ui,sans-serif;direction:rtl;padding:62px 58px 48px;display:flex;flex-direction:column;position:relative;font-size:15px;line-height:1.6;box-sizing:border-box}
+.pv *{box-sizing:border-box}
+.pv-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding-bottom:20px;border-bottom:3px solid #239298}
+.pv-top img{height:96px;width:auto}
+.pv-top b{display:block;font-size:30px;color:#17666a;line-height:1.3}
+.pv-top span{color:#5d6266;font-size:15px}
+.pv-two{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:22px 0}
+.pv-two h4{margin:0 0 6px;font-size:13px;color:#5d6266;font-weight:600}
+.pv-two div{font-size:15px;line-height:1.7}
+.pv table{width:100%;border-collapse:collapse;font-size:15px}
+.pv th{background:#eef6f6;color:#17666a;font-weight:600;text-align:start;padding:9px 12px}
+.pv td{padding:6px 12px;border-bottom:1px solid #e2e6e6}
+.pv td.n{color:#8a9094;width:44px}
+.pv td.q{width:90px;text-align:end}
+.pv-tot{margin-top:auto;display:grid;grid-template-columns:1fr auto;gap:6px 24px;padding-top:16px;border-top:1px solid #e2e6e6;font-size:15px}
+.pv-tot .g{font-size:24px;font-weight:700;color:#17666a}
+.pv-stamp{position:absolute;bottom:128px;left:42%;transform:rotate(-12deg);border:3px solid #239298;color:#239298;border-radius:12px;padding:4px 18px;font-weight:700;font-size:24px;opacity:.85}
+.pv-foot{margin-top:18px;font-size:13px;color:#7b8185;text-align:center}
+.pdf-prev{display:block;width:100%;max-width:300px;margin:0 auto 14px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.08),0 18px 34px -20px rgba(20,40,42,.5)}
+.pdf-acts{display:grid;gap:10px}
+.btn-wa{background:#1fa855;color:#fff}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -1476,7 +1500,7 @@ function closeSheet(){
  if(g){g.to('.sheet',{yPercent:100,duration:.32,ease:'power3.in',onComplete:done});g.to('.scrim',{opacity:0,duration:.3})}else done();
 }
 function renderSheet(){
- const fn={gallery:sGallery,bfask:sBfAsk,item:sItem,cart:sCart,pay:sPay,track:sTrack,mine:sMine,branch:sBranch,settings:sSettings}[sheetKind];
+ const fn={pdf:sPdf,gallery:sGallery,bfask:sBfAsk,item:sItem,cart:sCart,pay:sPay,track:sTrack,mine:sMine,branch:sBranch,settings:sSettings}[sheetKind];
  if(fn)$('#sheet-body').innerHTML=fn(sheetArg);
  {const g2=G(),sl=[...$$('.slot.full')];const now=new Set(sl.map(e=>e.dataset.k));if(sl.length&&g2&&!RM)sl.forEach(e=>{if(!plateSeen.has(e.dataset.k))g2.fromTo(e,{y:26,scale:.4,opacity:0},{y:0,scale:1,opacity:1,duration:.6,ease:'back.out(2.2)'})});plateSeen=now}
  const pg=$('.bf-ring .pg'),g=G();
@@ -1825,6 +1849,66 @@ function renderGallery(){
 function lbShow(i){const all=galleryAll();if(!all.length)return;{const lb=$('#lb');$('.lb-x',lb).innerHTML=ic('plus',22);$('.lb-x',lb).style.transform='rotate(45deg)';$('.lb-prev',lb).innerHTML=ic('chev',22);$('.lb-next',lb).innerHTML=ic('chev',22);$('.lb-prev',lb).style.transform=lang==='en'?'scaleX(-1)':'';$('.lb-next',lb).style.transform=lang==='en'?'':'scaleX(-1)';$('.lb-x',lb).setAttribute('aria-label',L('إغلاق','Close'));$('.lb-prev',lb).setAttribute('aria-label',L('السابقة','Previous'));$('.lb-next',lb).setAttribute('aria-label',L('التالية','Next'))}lbI=(i+all.length)%all.length;const lb=$('#lb'),im=$('img',lb);im.src=all[lbI].src;$('.lb-n',lb).textContent=`${lbI+1} / ${all.length}`;lb.hidden=false;const g=G();if(g&&!RM)g.fromTo(im,{opacity:0,scale:.97},{opacity:1,scale:1,duration:.35,ease:'expo.out'})}
 (()=>{let x0=null;document.addEventListener('touchstart',e=>{if(e.target.closest&&e.target.closest('#lb'))x0=e.touches[0].clientX},{passive:true});document.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>45){const fwd=lang==='en'?dx<0:dx>0;lbShow(lbI+(fwd?1:-1))}},{passive:true})})();
 
+
+/* ---------------- order confirmation PDF ---------------- */
+const pdfCache=new Map();
+function loadJS(src){return new Promise((res,rej)=>{if(document.querySelector(`script[src="${src}"]`)){const t=setInterval(()=>{if(window.html2canvas&&window.jspdf){clearInterval(t);res()}},50);setTimeout(()=>{clearInterval(t);res()},8000);return}const el=document.createElement('script');el.src=src;el.onload=res;el.onerror=rej;document.head.appendChild(el)})}
+async function pdfLibs(){if(!window.html2canvas)await loadJS('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');if(!window.jspdf)await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')}
+function noteDishes(note){const first=(note||'').split(' · ')[0];if(!/^(الأطباق|Dishes)\s*:/.test(first))return [];return first.replace(/^(الأطباق|Dishes)\s*:\s*/,'').split(/\s*[،,]\s*/).filter(Boolean)}
+function pdfHTML(o){
+ const ar=x=>esc(x),bf=bfLines(o),rows=[];let i=0;
+ bf.forEach(l=>noteDishes(l.note).forEach(d=>rows.push(`<tr><td class="n">${++i}</td><td>${ar(d)}</td><td class="q"></td></tr>`)));
+ o.items.filter(l=>{const m=byId(l.id);return m&&!m.buffet}).forEach(l=>rows.push(`<tr><td class="n">${++i}</td><td>${ar(byId(l.id).name)}${l.note?` <span style="color:#7b8185">(${ar(l.note)})</span>`:''}</td><td class="q">${l.qty} ×</td></tr>`));
+ const extra=bf.map(l=>{const n=(l.note||'').split(' · ').slice(1).join(' · ');return n?`<div style="margin-top:10px;color:#5d6266">ملاحظة: ${ar(n)}</div>`:''}).join('');
+ const P=bf[0]?byId(bf[0].id):null,ppl=bf.reduce((s,l)=>s+l.qty,0),tot=bf.reduce((s,l)=>s+l.qty*priceOf(l.id),0);
+ const d=new Date(o.at).toLocaleDateString('ar-BH-u-nu-latn',{day:'numeric',month:'long',year:'numeric'});
+ const ev=o.ev?`${ar(new Date(o.ev.date+'T12:00').toLocaleDateString('ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))}<br>من <bdi>${ar(fmtTime(o.ev.from))}</bdi>${o.ev.to?` إلى <bdi>${ar(fmtTime(o.ev.to))}</bdi>`:''}`:'—';
+ return `<div class="pv">
+  <div class="pv-top"><div><b>${P?'تأكيد طلب بوفية':'تأكيد طلب'}</b><span>رقم الطلب <bdi>${ar(o.id)}</bdi> · ${d}</span></div><img src="img/fba-logo.png" alt=""></div>
+  <div class="pv-two">
+   <div><h4>الزبون</h4>${ar(o.name)}<br><bdi>+973 ${ar(o.phone)}</bdi><br>${o.type==='delivery'?ar(o.address):'استلام من فرع '+ar(branchName(o.branch))}</div>
+   <div><h4>${P?'موعد البوفية':'الموعد'}</h4>${ev}<br>${o.type==='delivery'?'توصيل':'استلام'}</div>
+  </div>
+  <table><thead><tr><th>#</th><th>الطبق</th><th style="text-align:end">${bf.length&&rows.length===i&&!o.items.some(l=>{const m=byId(l.id);return m&&!m.buffet})?'':'الكمية'}</th></tr></thead><tbody>${rows.join('')}</tbody></table>${extra}
+  ${P?`<div class="pv-tot"><span>الخطة</span><span>${ar(P.name)}</span><span>عدد الأشخاص</span><span>${ppl}</span><span>سعر الفرد</span><span>${bhd(priceOf(P.id))} د.ب</span><span class="g">الإجمالي</span><span class="g">${bhd(tot)} د.ب</span></div>`:'<div style="margin-top:auto"></div>'}
+  <div class="pv-stamp">مؤكد ✓</div>
+  <div class="pv-foot">شكراً لاختياركم فريج بن عاقول · أصالة الماضي، بإبداع الحاضر</div>
+ </div>`;
+}
+async function makePdf(o){
+ if(pdfCache.has(o.id))return pdfCache.get(o.id);
+ await pdfLibs();
+ let st=$('#pdf-stage');if(!st){st=document.createElement('div');st.id='pdf-stage';document.body.appendChild(st)}
+ st.innerHTML=pdfHTML(o);const el=st.firstElementChild;
+ await Promise.all([...el.querySelectorAll('img')].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r})));
+ if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+ const cv=await window.html2canvas(el,{scale:2,backgroundColor:'#fff',useCORS:true,logging:false});
+ st.innerHTML='';
+ const img=cv.toDataURL('image/jpeg',.9);
+ const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4',compress:true});doc.addImage(img,'JPEG',0,0,210,297);
+ const blob=doc.output('blob'),file=new File([blob],`${o.id}.pdf`,{type:'application/pdf'});
+ const r={blob,file,url:URL.createObjectURL(blob),thumb:cv.toDataURL('image/jpeg',.6)};pdfCache.set(o.id,r);return r;
+}
+const custWaText=o=>`مرحباً ${o.name}، تم تأكيد طلبك رقم ${o.id} من فريج بن عاقول. مرفق ملف التأكيد.`;
+const custWaLink=o=>{const n=String(o.phone||'').replace(/\D/g,'').replace(/^973/,'');return n?`https://wa.me/973${n}?text=${encodeURIComponent(custWaText(o))}`:''};
+function sPdf(id){
+ const o=store.orders.find(x=>x.id===id);if(!o)return head(L('ملف التأكيد','Confirmation PDF'));
+ const r=pdfCache.get(id);
+ return head(L('ملف التأكيد جاهز','Confirmation PDF ready'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف التأكيد','Confirmation preview')}">`:`<div class="empty">${L('نجهز الملف…','Preparing the file…')}</div>`)+`
+ <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L(`أرسل الملف إلى ${esc(o.name)} على <bdi>+973 ${esc(o.phone)}</bdi>`,`Send it to ${esc(o.name)} on +973 ${esc(o.phone)}`)}</p>
+ <div class="pdf-acts">
+  <button class="btn btn-wa btn-block" data-act="pdf-wa" data-id="${o.id}" ${r?'':'disabled'}>${L('إرسال عبر الواتساب','Send on WhatsApp')}</button>
+  <button class="btn btn-soft btn-block" data-act="pdf-dl" data-id="${o.id}" ${r?'':'disabled'}>${L('تنزيل الملف','Download PDF')}</button>
+ </div>
+ <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('على الجوال تختار الواتساب ثم الزبون. على الكمبيوتر ينحفظ الملف وتنفتح محادثة الزبون، اسحب الملف فيها.','On a phone, pick WhatsApp then the customer. On a computer the file is saved and the chat opens; drag the file into it.')}</span>`;
+}
+async function pdfOpen(id){
+ const o=store.orders.find(x=>x.id===id);if(!o)return;
+ openSheet('pdf',id);
+ try{await makePdf(o);if(sheetKind==='pdf'&&sheetArg===id)renderSheet()}
+ catch(e){toast(L('ما قدرنا نجهز الملف. تأكد من الاتصال بالإنترنت وحاول مرة ثانية.','Could not build the PDF. Check the internet connection and try again.'));closeSheet()}
+}
+function pdfDownload(r,id){const a=document.createElement('a');a.href=r.url;a.download=`${id}.pdf`;document.body.appendChild(a);a.click();a.remove()}
 function renderBoard(){
  const el=$('#v-board');
  if(!unlocked){
@@ -1862,7 +1946,7 @@ function oCard(o){
   ${o.status==='rejected'&&o.reason?`<div class="alert" style="padding:10px 12px;font-size:13px">${esc(o.reason)}</div>`:''}
   ${rej?`<div class="field"><label>${L('سبب الرفض (يظهر للزبون)','Reason (shown to the customer)')}</label><div class="reasons">${[L('الفرع مشغول حالياً','The branch is busy right now'),L('بعض الأصناف غير متوفرة','Some dishes are unavailable'),L('العنوان خارج منطقة التوصيل','Address is outside our delivery area')].map(r=>`<button data-act="rr" data-v="${r}" aria-pressed="${rejReason===r}">${r}</button>`).join('')}</div>
     <div class="o-acts"><button class="btn btn-bad" data-act="rej-ok" data-id="${o.id}" ${rejReason?'':'disabled'}>${L('تأكيد الرفض','Confirm rejection')}</button><button class="btn btn-soft" data-act="rej-cancel">${L('إلغاء','Cancel')}</button></div></div>`
-  :next?`<div class="o-acts"><button class="btn ${o.status==='review'?'btn-ok':'btn-main'}" data-act="adv" data-id="${o.id}" data-v="${next[0]}">${ic('check',18)}${next[1]}</button>${o.status==='review'?`<button class="btn btn-bad" data-act="rej" data-id="${o.id}">${L('رفض','Reject')}</button>`:''}</div>`:''}
+  :next?`<div class="o-acts">${o.status==='review'?`<button class="btn btn-ok" data-act="acc-pdf" data-id="${o.id}">${ic('check',18)}${L('قبول وإرسال PDF','Accept & send PDF')}</button><button class="btn btn-bad" data-act="rej" data-id="${o.id}">${L('رفض','Reject')}</button>`:`<button class="btn btn-main" data-act="adv" data-id="${o.id}" data-v="${next[0]}">${ic('check',18)}${next[1]}</button><button class="btn btn-soft" data-act="pdf-send" data-id="${o.id}">${L('إرسال PDF','Send PDF')}</button>`}</div>`:o.status==='done'?`<div class="o-acts"><button class="btn btn-soft" data-act="pdf-send" data-id="${o.id}">${L('إرسال PDF','Send PDF')}</button></div>`:''}
  </article>`;
 }
 function beep(){try{const A=window.AudioContext||window.webkitAudioContext;const c=new A();[0,.18].forEach((t,i)=>{const o=c.createOscillator(),g=c.createGain();o.frequency.value=i?1180:880;g.gain.setValueAtTime(.0001,c.currentTime+t);g.gain.exponentialRampToValueAtTime(.25,c.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+t+.16);o.connect(g).connect(c.destination);o.start(c.currentTime+t);o.stop(c.currentTime+t+.2)})}catch(e){}}
@@ -1950,6 +2034,12 @@ document.addEventListener('click',async e=>{
   case 'copy':copy(v,t);break;
   case 'submit':submitOrder();break;
   case 'btab':bTab=v;rejecting=null;renderBoard();break;
+  case 'acc-pdf':{const o=store.orders.find(x=>x.id===id);if(!o)break;o.status='confirmed';o.reason='';save();renderBoard();toast(`${o.id}: ${STATUS.confirmed}`);pdfOpen(id);break}
+  case 'pdf-send':pdfOpen(id);break;
+  case 'pdf-dl':{const r=pdfCache.get(id);if(r)pdfDownload(r,id);break}
+  case 'pdf-wa':{const o=store.orders.find(x=>x.id===id),r=pdfCache.get(id);if(!o||!r)break;
+   if(navigator.canShare&&navigator.canShare({files:[r.file]})){try{await navigator.share({files:[r.file],text:custWaText(o)})}catch(err){}break}
+   pdfDownload(r,id);const w=custWaLink(o);if(w)window.open(w,'_blank','noopener');break}
   case 'adv':{const o=store.orders.find(x=>x.id===id);o.status=v;o.reason='';save();renderBoard();toast(`${o.id}: ${STATUS[v]}`);break}
   case 'rej':rejecting=id;rejReason='';renderBoard();break;
   case 'rr':rejReason=v;renderBoard();break;
