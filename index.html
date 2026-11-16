@@ -991,6 +991,32 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradi
 .pv-tot .g{font-size:24px;font-weight:700;color:#17666a}
 .pv-stamp{position:absolute;bottom:128px;left:42%;transform:rotate(-12deg);border:3px solid #239298;color:#239298;border-radius:12px;padding:4px 18px;font-weight:700;font-size:24px;opacity:.85}
 .pv-foot{margin-top:18px;font-size:13px;color:#7b8185;text-align:center}
+
+.pv.pb{padding:0}
+.pb-hero{background:#239298;color:#fff;padding:52px 58px 40px;display:flex;justify-content:space-between;align-items:center;gap:20px}
+.pb-hero b{display:block;font-size:38px;line-height:1.25}
+.pb-hero span{font-size:16px;opacity:.9}
+.pb-ok{display:inline-block;margin-top:12px;background:#fff;color:#17666a;border-radius:999px;padding:5px 16px;font-weight:700;font-size:15px}
+.pb-logo{width:132px;height:132px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.pb-logo img{width:104px;height:auto}
+.pb-body{padding:30px 58px 36px;display:flex;flex-direction:column;flex:1}
+.pb-chips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
+.pb-chips div{background:#f2f5f5;border-radius:14px;padding:10px 14px}
+.pb-chips small{display:block;color:#5d6266;font-size:12.5px}
+.pb-chips b{font-size:15px;font-weight:600}
+.pb-h{margin:0 0 12px;font-size:17px;color:#17666a}
+.pb-h span{display:inline-block;background:#239298;color:#fff;border-radius:999px;padding:0 10px;font-size:13px;margin-inline-start:6px}
+.pb-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pb-im{width:100%;height:136px;border-radius:14px;background:#e8eeee center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:700;color:#239298}
+.pb-dn{text-align:center;font-size:13.5px;font-weight:600;margin-top:6px;line-height:1.35}
+.pb-other{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.pb-other span{background:#f2f5f5;border-radius:10px;padding:5px 12px;font-size:14px}
+.pb-note{margin-top:14px;color:#5d6266;font-size:14px}
+.pb-sum{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;background:#2D2D35;color:#fff;border-radius:20px;padding:18px 24px}
+.pb-sum small{display:block;opacity:.75;font-size:13px;margin-bottom:2px}
+.pb-sum div{font-size:17px}
+.pb-sum b{font-size:34px;line-height:1}
+.pb-sum em{font-style:normal;font-size:16px;font-weight:500;opacity:.8}
 .pdf-prev{display:block;width:100%;max-width:300px;margin:0 auto 14px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.08),0 18px 34px -20px rgba(20,40,42,.5)}
 .pdf-acts{display:grid;gap:10px}
 .btn-wa{background:#1fa855;color:#fff}
@@ -1879,24 +1905,36 @@ const pdfCache=new Map(),pdfFail=new Set();
 function loadJS(src){return new Promise((res,rej)=>{if(document.querySelector(`script[src="${src}"]`)){const t=setInterval(()=>{if(window.html2canvas&&window.jspdf){clearInterval(t);res()}},50);setTimeout(()=>{clearInterval(t);res()},8000);return}const el=document.createElement('script');el.src=src;el.onload=res;el.onerror=rej;document.head.appendChild(el)})}
 async function pdfLibs(){if(!window.html2canvas)await loadJS('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');if(!window.jspdf)await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')}
 function noteDishes(note){const first=(note||'').split(' · ')[0];if(!/^(الأطباق|Dishes)\s*:/.test(first))return [];return first.replace(/^(الأطباق|Dishes)\s*:\s*/,'').split(/\s*[،,]\s*/).filter(Boolean)}
+function dishImg(n){const k=String(n).replace(/\s*×\d+$/,'').trim();const m=MENU.find(x=>x.name===k||x.en===k||x.name_en===k);return m&&m.img?m.img:''}
 function pdfHTML(o){
- const ar=x=>esc(x),bf=bfLines(o),rows=[];let i=0;
- bf.forEach(l=>noteDishes(l.note).forEach(d=>rows.push(`<tr><td class="n">${++i}</td><td>${ar(d)}</td><td class="q"></td></tr>`)));
- o.items.filter(l=>{const m=byId(l.id);return m&&!m.buffet}).forEach(l=>rows.push(`<tr><td class="n">${++i}</td><td>${ar(byId(l.id).name)}${l.note?` <span style="color:#7b8185">(${ar(l.note)})</span>`:''}</td><td class="q">${l.qty} ×</td></tr>`));
- const extra=bf.map(l=>{const n=(l.note||'').split(' · ').slice(1).join(' · ');return n?`<div style="margin-top:10px;color:#5d6266">ملاحظة: ${ar(n)}</div>`:''}).join('');
+ const ar=x=>esc(x),bf=bfLines(o),nw=o.status==='review',dishes=[];
+ bf.forEach(l=>noteDishes(l.note).forEach(d=>dishes.push(d)));
+ const other=o.items.filter(l=>{const m=byId(l.id);return m&&!m.buffet});
+ const extra=bf.map(l=>(l.note||'').split(' · ').slice(1).join(' · ')).filter(Boolean).join(' · ');
  const P=bf[0]?byId(bf[0].id):null,ppl=bf.reduce((s,l)=>s+l.qty,0),tot=bf.reduce((s,l)=>s+l.qty*priceOf(l.id),0);
  const d=new Date(o.at).toLocaleDateString('ar-BH-u-nu-latn',{day:'numeric',month:'long',year:'numeric'});
- const ev=o.ev?`${ar(new Date(o.ev.date+'T12:00').toLocaleDateString('ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))}<br>من <bdi>${ar(fmtTime(o.ev.from))}</bdi>${o.ev.to?` إلى <bdi>${ar(fmtTime(o.ev.to))}</bdi>`:''}`:'—';
- return `<div class="pv">
-  <div class="pv-top"><div><b>${o.status==='review'?(P?'طلب بوفية جديد':'طلب جديد'):(P?'تأكيد طلب بوفية':'تأكيد طلب')}</b><span>رقم الطلب <bdi>${ar(o.id)}</bdi> · ${d}</span></div><img src="img/fba-logo.png" alt=""></div>
-  <div class="pv-two">
-   <div><h4>الزبون</h4>${ar(o.name)}<br><bdi>+973 ${ar(o.phone)}</bdi><br>${o.type==='delivery'?ar(o.address):'استلام من فرع '+ar(branchName(o.branch))}</div>
-   <div><h4>${P?'موعد البوفية':'الموعد'}</h4>${ev}<br>${o.type==='delivery'?'توصيل':'استلام'}</div>
+ const evD=o.ev?new Date(o.ev.date+'T12:00').toLocaleDateString('ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long'}):'—';
+ const evT=o.ev?`${fmtTime(o.ev.from)}${o.ev.to?' – '+fmtTime(o.ev.to):''}`:'';
+ const tile=n=>{const im=dishImg(n);return `<div class="pb-d"><div class="pb-im"${im?` style="background-image:url('${im}')"`:''}>${im?'':ar(n.slice(0,1))}</div><div class="pb-dn">${ar(n)}</div></div>`};
+ return `<div class="pv pb">
+  <div class="pb-hero">
+   <div><b>${nw?(P?'طلب بوفية جديد':'طلب جديد'):'طلبك مؤكد'}</b><span>رقم الطلب <bdi>${ar(o.id)}</bdi> · ${d}</span>
+    <div class="pb-ok">${nw?'بانتظار تأكيد الفرع':'✓ تم القبول من الفرع'}</div></div>
+   <div class="pb-logo"><img src="img/fba-logo.png" alt=""></div>
   </div>
-  <table><thead><tr><th>#</th><th>الطبق</th><th style="text-align:end">${bf.length&&rows.length===i&&!o.items.some(l=>{const m=byId(l.id);return m&&!m.buffet})?'':'الكمية'}</th></tr></thead><tbody>${rows.join('')}</tbody></table>${extra}
-  ${P?`<div class="pv-tot"><span>الخطة</span><span>${ar(P.name)}</span><span>عدد الأشخاص</span><span>${ppl}</span><span>سعر الفرد</span><span>${bhd(priceOf(P.id))} د.ب</span><span class="g">الإجمالي</span><span class="g">${bhd(tot)} د.ب</span></div>`:'<div style="margin-top:auto"></div>'}
-  ${o.status==='review'?'':'<div class="pv-stamp">مؤكد ✓</div>'}
-  <div class="pv-foot">شكراً لاختياركم فريج بن عاقول · أصالة الماضي، بإبداع الحاضر</div>
+  <div class="pb-body">
+   <div class="pb-chips">
+    <div><small>الاسم</small><b>${ar(o.name)}</b></div>
+    <div><small>الهاتف</small><b><bdi>+973 ${ar(o.phone)}</bdi></b></div>
+    <div><small>${P?'موعد البوفية':'الموعد'}</small><b>${ar(evD)}${evT?` · <bdi>${ar(evT)}</bdi>`:''}</b></div>
+    <div><small>${o.type==='delivery'?'عنوان التوصيل':'الاستلام'}</small><b>${o.type==='delivery'?ar(o.address):ar(branchName(o.branch))}</b></div>
+   </div>
+   ${dishes.length?`<h3 class="pb-h">الأطباق المختارة <span>${dishes.length}</span></h3><div class="pb-grid">${dishes.map(tile).join('')}</div>`:''}
+   ${other.length?`<h3 class="pb-h">أصناف إضافية</h3><div class="pb-other">${other.map(l=>`<span>${l.qty} × ${ar(byId(l.id).name)}${l.note?` (${ar(l.note)})`:''}</span>`).join('')}</div>`:''}
+   ${extra?`<div class="pb-note">ملاحظة: ${ar(extra)}</div>`:''}
+   ${P?`<div class="pb-sum"><div><small>${ar(P.name)} · ${ppl} شخص × ${bhd(priceOf(P.id))} د.ب</small>الإجمالي</div><b>${bhd(tot)} <em>د.ب</em></b></div>`:'<div style="margin-top:auto"></div>'}
+   <div class="pv-foot">شكراً لاختياركم فريج بن عاقول · أصالة الماضي، بإبداع الحاضر</div>
+  </div>
  </div>`;
 }
 const pdfKey=o=>o.id+(o.status==='review'?':new':':ok');
