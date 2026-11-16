@@ -1689,7 +1689,7 @@ function submitOrder(){
  if(!save()){toast(L('مساحة التخزين ممتلئة، احذف طلبات قديمة من لوحة الفرع','Storage is full. Delete old orders from the branch board'));return}
  checkout.receipt=null;checkout.errors={};if(o.ev){checkout.date='';checkout.from='';checkout.to=''}
  renderMenu();
- if(isBuffetOrder(o))pdfOpen(o.id);else{const w=waLink(o);if(w)window.open(w,'_blank','noopener');openSheet('track',o.id)}
+ if(isBuffetOrder(o)){const w=custWaLink(o);if(w)window.open(w,'_blank','noopener');pdfOpen(o.id)}else{const w=waLink(o);if(w)window.open(w,'_blank','noopener');openSheet('track',o.id)}
 }
 const FLOW=['review','confirmed','preparing','ready','done'];
 const isBuffetOrder=o=>o.items.some(l=>{const m=byId(l.id);return m&&m.buffet});
@@ -1875,7 +1875,7 @@ function lbShow(i){const all=galleryAll();if(!all.length)return;{const lb=$('#lb
 
 
 /* ---------------- order confirmation PDF ---------------- */
-const pdfCache=new Map();
+const pdfCache=new Map(),pdfFail=new Set();
 function loadJS(src){return new Promise((res,rej)=>{if(document.querySelector(`script[src="${src}"]`)){const t=setInterval(()=>{if(window.html2canvas&&window.jspdf){clearInterval(t);res()}},50);setTimeout(()=>{clearInterval(t);res()},8000);return}const el=document.createElement('script');el.src=src;el.onload=res;el.onerror=rej;document.head.appendChild(el)})}
 async function pdfLibs(){if(!window.html2canvas)await loadJS('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');if(!window.jspdf)await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')}
 function noteDishes(note){const first=(note||'').split(' · ')[0];if(!/^(الأطباق|Dishes)\s*:/.test(first))return [];return first.replace(/^(الأطباق|Dishes)\s*:\s*/,'').split(/\s*[،,]\s*/).filter(Boolean)}
@@ -1915,18 +1915,19 @@ async function makePdf(o){
  const r={blob,file,url:URL.createObjectURL(blob),thumb:cv.toDataURL('image/jpeg',.6)};pdfCache.set(pdfKey(o),r);return r;
 }
 const isNewO=o=>o.status==='review';
-const custWaText=o=>isNewO(o)?`طلب بوفية جديد رقم ${o.id}\nالاسم: ${o.name}\nالهاتف: ${o.phone}${o.ev?`\nالموعد: ${o.ev.date} من ${o.ev.from}${o.ev.to?' إلى '+o.ev.to:''}`:''}\nمرفق ملف الطلب.`:`مرحباً ${o.name}، تم تأكيد طلبك رقم ${o.id} من فريج بن عاقول. مرفق ملف التأكيد.`;
+const custWaText=o=>isNewO(o)?`🔔 يوجد طلب بوفية جديد رقم ${o.id}\nالاسم: ${o.name}\nالهاتف: ${o.phone}${o.ev?`\nالموعد: ${o.ev.date} من ${o.ev.from}${o.ev.to?' إلى '+o.ev.to:''}`:''}\nتفاصيل الطلب في ملف PDF.`:`مرحباً ${o.name}، تم تأكيد طلبك رقم ${o.id} من فريج بن عاقول. مرفق ملف التأكيد.`;
 const custWaLink=o=>{const n=isNewO(o)?ORDER_WA:'973'+String(o.phone||'').replace(/\D/g,'').replace(/^973/,'');return n.length>3?`https://wa.me/${n}?text=${encodeURIComponent(custWaText(o))}`:''};
 function sPdf(id){
  const o=store.orders.find(x=>x.id===id);if(!o)return head(L('ملف التأكيد','Confirmation PDF'));
  const r=pdfCache.get(pdfKey(o)),nw=isNewO(o);
- if(nw)return head(L('آخر خطوة: أرسل طلبك','Last step: send your order'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف الطلب','Order preview')}">`:`<div class="empty">${L('نجهز ملف الطلب…','Preparing your order file…')}</div>`)+`
- <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L('اضغط الزر ليوصل ملف طلبك للمطعم على الواتساب. ما نعتمد الطلب إلا بعد ما يوصلنا.','Tap the button to send your order file to the restaurant on WhatsApp. We only confirm it once it reaches us.')}</p>
+ if(nw)return head(L('تم إرسال طلبك','Your order was sent'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف الطلب','Order preview')}">`:pdfFail.has(pdfKey(o))?`<div class="empty">${L('ما قدرنا نجهز ملف PDF. طلبك محفوظ، اضغط «حاول مرة ثانية».','We could not build the PDF. Your order is saved; tap “Try again”.')}<br><button class="btn btn-soft" style="margin-top:10px" data-act="pdf-retry" data-id="${o.id}">${L('حاول مرة ثانية','Try again')}</button></div>`:`<div class="empty">${L('نجهز ملف الطلب…','Preparing your order file…')}</div>`)+`
+ <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L('انفتح الواتساب برسالة للمطعم أن عندك طلب جديد. نزّل ملف الطلب PDF واحتفظ فيه، وتقدر ترسله في نفس المحادثة.','WhatsApp opened with a message telling the restaurant you have a new order. Download your order PDF to keep it; you can send it in the same chat.')}</p>
  <div class="pdf-acts">
-  <button class="btn btn-wa btn-block" data-act="pdf-wa" data-id="${o.id}" ${r?'':'disabled'}>${L('إرسال الطلب عبر الواتساب','Send order on WhatsApp')}</button>
+  <button class="btn btn-main btn-block" data-act="pdf-dl" data-id="${o.id}" ${r?'':'disabled'}>${ic('download',18)}${L('تنزيل ملف الطلب PDF','Download order PDF')}</button>
+  <button class="btn btn-wa btn-block" data-act="wa-new" data-id="${o.id}">${L('إعادة إبلاغ المطعم عبر الواتساب','Notify the restaurant again on WhatsApp')}</button>
   <button class="btn btn-soft btn-block" data-act="pdf-track" data-id="${o.id}">${L('متابعة الطلب','Track order')}</button>
  </div>
- <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('على الجوال اختر الواتساب ثم أرسل. على الكمبيوتر ينحفظ الملف وتنفتح المحادثة، اسحب الملف فيها.','On a phone, pick WhatsApp and send. On a computer the file is saved and the chat opens; drag the file into it.')}</span>`;
+ <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('لو ما انفتح الواتساب، اضغط «إعادة إبلاغ المطعم».','If WhatsApp did not open, tap “Notify the restaurant again”.')}</span>`;
  return head(L('ملف التأكيد جاهز','Confirmation PDF ready'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف التأكيد','Confirmation preview')}">`:`<div class="empty">${L('نجهز الملف…','Preparing the file…')}</div>`)+`
  <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L(`أرسل الملف إلى ${esc(o.name)} على <bdi>+973 ${esc(o.phone)}</bdi>`,`Send it to ${esc(o.name)} on +973 ${esc(o.phone)}`)}</p>
  <div class="pdf-acts">
@@ -1939,7 +1940,7 @@ async function pdfOpen(id){
  const o=store.orders.find(x=>x.id===id);if(!o)return;
  openSheet('pdf',id);
  try{await makePdf(o);if(sheetKind==='pdf'&&sheetArg===id)renderSheet()}
- catch(e){toast(L('ما قدرنا نجهز الملف. تأكد من الاتصال بالإنترنت وحاول مرة ثانية.','Could not build the PDF. Check the internet connection and try again.'));if(isNewO(o)){const w=custWaLink(o);if(w)window.open(w,'_blank','noopener');openSheet('track',id)}else closeSheet()}
+ catch(e){toast(L('ما قدرنا نجهز الملف. تأكد من الاتصال بالإنترنت وحاول مرة ثانية.','Could not build the PDF. Check the internet connection and try again.'));if(!isNewO(o))closeSheet();else{pdfFail.add(pdfKey(o));if(sheetKind==='pdf'&&sheetArg===id)renderSheet()}}
 }
 function pdfDownload(r,id){const a=document.createElement('a');a.href=r.url;a.download=`${id}.pdf`;document.body.appendChild(a);a.click();a.remove()}
 function renderBoard(){
@@ -2072,6 +2073,8 @@ document.addEventListener('click',async e=>{
   case 'pdf-send':pdfOpen(id);break;
   case 'pdf-dl':{const o=store.orders.find(x=>x.id===id),r=o&&pdfCache.get(pdfKey(o));if(r)pdfDownload(r,id);break}
   case 'pdf-track':openSheet('track',id);break;
+  case 'pdf-retry':{const o=store.orders.find(x=>x.id===id);if(o)pdfFail.delete(pdfKey(o));pdfOpen(id);break}
+  case 'wa-new':{const o=store.orders.find(x=>x.id===id),w=o&&custWaLink(o);if(w)window.open(w,'_blank','noopener');break}
   case 'pdf-wa':{const o=store.orders.find(x=>x.id===id),r=o&&pdfCache.get(pdfKey(o));if(!o||!r)break;
    if(navigator.canShare&&navigator.canShare({files:[r.file]})){try{await navigator.share({files:[r.file],text:custWaText(o)})}catch(err){}break}
    pdfDownload(r,id);const w=custWaLink(o);if(w)window.open(w,'_blank','noopener');break}
