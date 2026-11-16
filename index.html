@@ -962,6 +962,15 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradi
 #v-menu .card.soldout .art{filter:grayscale(.8) brightness(.8)}
 @media (max-width:380px){#v-menu .card .c-desc{display:none}}
 
+/* ================= Buffet slots ================= */
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px}
+.slot-chip{height:42px;border-radius:12px;border:1px solid rgba(35,146,152,.35);background:rgba(255,255,255,.7);font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:4px;color:inherit;font-variant-numeric:tabular-nums;transition:background .2s,color .2s,transform .15s}
+.slot-chip:active:not(:disabled){transform:scale(.96)}
+.slot-chip.on{background:#239298;color:#fff;border-color:#239298}
+.slot-chip:disabled{opacity:.42;cursor:not-allowed;background:rgba(0,0,0,.04);border-style:dashed}
+.slot-chip:focus-visible{outline:3px solid rgba(35,146,152,.45);outline-offset:2px}
+.slot-note{margin:8px 0 0;font-size:13px;color:var(--muted)}
+.slot-note.bad{color:#c0261c;font-weight:600;font-size:14px}
 /* ================= Order PDF (invoice) ================= */
 #pdf-stage{position:fixed;left:-12000px;top:0;pointer-events:none}
 .pv{letter-spacing:0;word-spacing:0;width:794px;height:1123px;background:#fff;color:#2D2D35;font-family:"IBM Plex Sans Arabic",system-ui,sans-serif;direction:rtl;padding:62px 58px 48px;display:flex;flex-direction:column;position:relative;font-size:15px;line-height:1.6;box-sizing:border-box}
@@ -1520,7 +1529,7 @@ let bfBuild=null;
 const bfCount=()=>bfBuild?Object.values(bfBuild.picks).reduce((a,n)=>a+n,0):0;
 const bfOn=m=>{if(!bfBuild)return false;const e=bfEntry(m);return !!(e&&bfBuild.picks[e.id])};
 document.addEventListener('input',e=>{const f=e.target.closest&&e.target.closest('.field');if(f&&/^c-/.test(e.target.id||'')){e.target.classList.remove('bad');const er=f.querySelector('.err');if(er)er.remove();const k={'c-blk':'blk','c-rd':'rd','c-bld':'bh','c-hse':'bh','c-name':'name','c-phone':'phone','c-addr':'address','c-area':'area','c-date':'date','c-from':'from','c-to':'to','c-loc':'loc'}[e.target.id];if(k&&checkout.errors)delete checkout.errors[k];if(k==='bh'){const eb=$('#err-bh');if(eb)eb.remove()}}});
-document.addEventListener('change',e=>{if(e.target.id==='c-area'||e.target.id==='c-date'||e.target.id==='c-from'||e.target.id==='c-to')e.target.dispatchEvent(new Event('input',{bubbles:true}))});
+document.addEventListener('change',e=>{if(e.target.id==='c-date'){checkout.date=e.target.value;checkout.from='';checkout.to='';const sl=$('#c-slots');if(sl)sl.innerHTML=slotHTML(checkout.errors||{})}if(e.target.id==='c-to')checkout.to=e.target.value;if(e.target.id==='c-area'||e.target.id==='c-date'||e.target.id==='c-from'||e.target.id==='c-to')e.target.dispatchEvent(new Event('input',{bubbles:true}))});
 document.addEventListener('input',e=>{if(e.target.id!=='bf-ppl')return;const n=parseInt(e.target.value,10);if(!n)return;itemQty=Math.min(500,n);const pr=priceOf(sheetArg),ok=itemQty>=BF_MIN,bt=$('#bf-total'),bc=$('#bf-calc'),bb=$('#bf-btn-total');if(bt)bt.textContent=bhd(pr*itemQty)+' '+CUR();if(bc)bc.textContent=itemQty+' × '+bhd(pr);if(bb)bb.textContent=bhd(pr*itemQty);const add=$('[data-act="item-add"]');if(add&&pickTotal()===byId(sheetArg).pick)add.disabled=!ok});
 document.addEventListener('change',e=>{if(e.target.id!=='bf-ppl')return;const n=parseInt(e.target.value,10)||BF_MIN;if(n<BF_MIN)toast(L(`الحد الأدنى للبوفية ${BF_MIN} شخص`,`Buffet minimum is ${BF_MIN} people`));itemQty=Math.max(BF_MIN,Math.min(500,n));const st=$('.sheet').scrollTop;renderSheet();$('.sheet').scrollTop=st});
 function bfRefreshCards(){$$('.card').forEach(c=>refreshCard(c.dataset.id));renderCartBar()}
@@ -1576,6 +1585,22 @@ let checkout={type:'delivery',address:'',area:'',pay:'iban',receipt:null,errors:
 const cartHasBf=()=>cart().some(l=>{const m=byId(l.id);return m&&m.buffet});
 const todayISO=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
 const fmtDate=iso=>{try{return new Date(iso+'T12:00').toLocaleDateString(lang==='en'?'en-GB':'ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long'})}catch(e){return iso}};
+const BF_PER_DAY=2,BF_GAP=120,BF_OPEN=6,BF_CLOSE=23,BF_DEF_LEN=3,ORDER_WA='97366750818';
+const tMin=t=>{const[h,m]=String(t||'0:0').split(':').map(Number);return h*60+(m||0)};
+const tStr=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+function bfBooked(date){return store.orders.filter(o=>o.ev&&o.ev.date===date&&o.status!=='rejected'&&isBuffetOrder(o)).map(o=>{const a=tMin(o.ev.from);return{a,b:o.ev.to?tMin(o.ev.to):a+BF_DEF_LEN*60}})}
+function bfFits(date,a,b){const bk=bfBooked(date);if(bk.length>=BF_PER_DAY)return false;return bk.every(x=>a>=x.b+BF_GAP||b<=x.a-BF_GAP)}
+function slotHTML(e){
+ if(!checkout.date)return `<p class="slot-note">${L('اختر التاريخ أولاً لتظهر الأوقات المتاحة.','Choose the date first to see the free times.')}</p>`;
+ const bk=bfBooked(checkout.date);
+ if(bk.length>=BF_PER_DAY)return `<p class="slot-note bad">${L('هذا اليوم محجوز بالكامل، اختر يوماً آخر.','This day is fully booked. Choose another day.')}</p>`;
+ const starts=[];for(let h=BF_OPEN;h<=BF_CLOSE-1;h++)starts.push(h*60);
+ const chips=starts.map(a=>{const ok=bfFits(checkout.date,a,a+60),on=checkout.from&&tMin(checkout.from)===a;return `<button type="button" class="slot-chip${on?' on':''}" data-act="slot" data-v="${tStr(a)}" ${ok?'':'disabled'} aria-pressed="${on}">${ok?'':ic('lock',13)}<bdi>${fmtTime(tStr(a))}</bdi></button>`}).join('');
+ let ends='';
+ if(checkout.from){const a=tMin(checkout.from),opts=[];for(let b=a+60;b<=Math.min(a+6*60,BF_CLOSE*60);b+=60)if(bfFits(checkout.date,a,b))opts.push(b);
+  ends=`<div class="field" style="margin-top:12px"><label for="c-to">${L('ينتهي الساعة','Ends at')}</label><select class="input${e.to?' bad':''}" id="c-to">${opts.map(b=>`<option value="${tStr(b)}" ${checkout.to===tStr(b)?'selected':''}>${fmtTime(tStr(b))} · ${L(['','ساعة','ساعتان','3 ساعات','4 ساعات','5 ساعات','6 ساعات'][(b-a)/60],`${(b-a)/60} h`)}</option>`).join('')}</select>${e.to?`<span class="err">${e.to}</span>`:''}</div>`}
+ return `<div class="field"><label>${L('وقت البداية','Start time')}</label><div class="slots" role="group">${chips}</div>${e.from?`<span class="err">${e.from}</span>`:''}<p class="slot-note">${bk.length?L(`باقي حجز واحد في هذا اليوم. الأوقات المقفلة محجوزة أو قريبة من حجز آخر.`,`One booking left on this day. Locked times are booked or too close to another booking.`):L(`نستقبل ${BF_PER_DAY} بوفية في اليوم، بينهما ساعتان على الأقل.`,`We take ${BF_PER_DAY} buffets a day, at least two hours apart.`)}</p></div>${ends}`;
+}
 const fmtTime=t=>{if(!t)return '';const[h,m]=t.split(':').map(Number);const pm=h>=12,hh=((h+11)%12)+1;return `${hh}:${String(m).padStart(2,'0')} ${pm?L('م','pm'):L('ص','am')}`};
 function sCart(){
  const c=cart(),B=BRANDS[brand],p=store.profile,e=checkout.errors,hasBf=cartHasBf();
@@ -1593,8 +1618,7 @@ function sCart(){
   </div>
   ${hasBf?`<div class="sh-sec"><h3>${L('موعد البوفية والموقع','Buffet time and location')}</h3>
    <div class="field"><label for="c-date">${L('التاريخ','Date')}</label><input class="input${e.date?' bad':''}" id="c-date" type="date" min="${todayISO()}" value="${esc(checkout.date)}">${e.date?`<span class="err">${e.date}</span>`:''}</div>
-   <div class="row2"><div class="field"><label for="c-from">${L('الساعة من','From')}</label><input class="input${e.from?' bad':''}" id="c-from" type="time" value="${esc(checkout.from)}">${e.from?`<span class="err">${e.from}</span>`:''}</div>
-   <div class="field"><label for="c-to">${L('إلى (اختياري)','To (optional)')}</label><input class="input${e.to?' bad':''}" id="c-to" type="time" value="${esc(checkout.to)}">${e.to?`<span class="err">${e.to}</span>`:''}</div></div>
+   <div id="c-slots">${slotHTML(e)}</div>
    <div class="field"><label for="c-loc">${L('الموقع على الخريطة (اختياري)','Location on the map (optional)')}</label>
     <button class="btn btn-soft btn-block" data-act="geo" type="button">${ic('pin',18)}${checkout.loc?L('تم تحديد الموقع، اضغط للتحديث','Location set, tap to update'):L('حدد موقعي الحالي','Use my current location')}</button>
     <input class="input ltr${e.loc?' bad':''}" id="c-loc" inputmode="url" value="${esc(checkout.loc)}" placeholder="${L('أو الصق رابط الموقع من خرائط Google','Or paste a Google Maps link')}" style="text-align:${lang==='en'?'left':'right'}">
@@ -1624,7 +1648,7 @@ function validateCart(){
   if(!checkout.date)e.date=L('اختر تاريخ البوفية.','Choose the buffet date.');
   else if(checkout.date<todayISO())e.date=L('التاريخ مضى، اختر يوماً قادماً.','That date has passed. Choose an upcoming day.');
   if(!checkout.from)e.from=L('اختر وقت البداية.','Choose a start time.');
-  if(checkout.to&&checkout.from&&checkout.to<=checkout.from)e.to=L('وقت النهاية بعد وقت البداية.','The end time must be after the start time.');
+  else if(checkout.date){const a=tMin(checkout.from),b=checkout.to?tMin(checkout.to):a+BF_DEF_LEN*60;if(b<=a)e.to=L('وقت النهاية بعد وقت البداية.','The end time must be after the start time.');else if(!bfFits(checkout.date,a,b))e.from=L('هذا الوقت ما عاد متاحاً، اختر وقتاً آخر.','That time is no longer free. Choose another time.')}
   if(checkout.loc&&!/^https?:\/\/\S+$/.test(checkout.loc)&&!/^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(checkout.loc))e.loc=L('هذا ليس رابط خرائط. اضغط «حدد موقعي الحالي» أو الصق رابطاً من خرائط Google، أو اترك الخانة فارغة.','That is not a map link. Tap “Use my current location”, paste a Google Maps link, or leave it empty.');
  }
  checkout.errors=e;return !Object.keys(e).length;
@@ -1664,8 +1688,8 @@ function submitOrder(){
  if(store.orders.length>80)store.orders.length=80;
  if(!save()){toast(L('مساحة التخزين ممتلئة، احذف طلبات قديمة من لوحة الفرع','Storage is full. Delete old orders from the branch board'));return}
  checkout.receipt=null;checkout.errors={};if(o.ev){checkout.date='';checkout.from='';checkout.to=''}
- if(isBuffetOrder(o)){const w=waLink(o);if(w)window.open(w,'_blank','noopener')}
- renderMenu();openSheet('track',o.id);
+ renderMenu();
+ if(isBuffetOrder(o))pdfOpen(o.id);else{const w=waLink(o);if(w)window.open(w,'_blank','noopener');openSheet('track',o.id)}
 }
 const FLOW=['review','confirmed','preparing','ready','done'];
 const isBuffetOrder=o=>o.items.some(l=>{const m=byId(l.id);return m&&m.buffet});
@@ -1864,19 +1888,20 @@ function pdfHTML(o){
  const d=new Date(o.at).toLocaleDateString('ar-BH-u-nu-latn',{day:'numeric',month:'long',year:'numeric'});
  const ev=o.ev?`${ar(new Date(o.ev.date+'T12:00').toLocaleDateString('ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))}<br>من <bdi>${ar(fmtTime(o.ev.from))}</bdi>${o.ev.to?` إلى <bdi>${ar(fmtTime(o.ev.to))}</bdi>`:''}`:'—';
  return `<div class="pv">
-  <div class="pv-top"><div><b>${P?'تأكيد طلب بوفية':'تأكيد طلب'}</b><span>رقم الطلب <bdi>${ar(o.id)}</bdi> · ${d}</span></div><img src="img/fba-logo.png" alt=""></div>
+  <div class="pv-top"><div><b>${o.status==='review'?(P?'طلب بوفية جديد':'طلب جديد'):(P?'تأكيد طلب بوفية':'تأكيد طلب')}</b><span>رقم الطلب <bdi>${ar(o.id)}</bdi> · ${d}</span></div><img src="img/fba-logo.png" alt=""></div>
   <div class="pv-two">
    <div><h4>الزبون</h4>${ar(o.name)}<br><bdi>+973 ${ar(o.phone)}</bdi><br>${o.type==='delivery'?ar(o.address):'استلام من فرع '+ar(branchName(o.branch))}</div>
    <div><h4>${P?'موعد البوفية':'الموعد'}</h4>${ev}<br>${o.type==='delivery'?'توصيل':'استلام'}</div>
   </div>
   <table><thead><tr><th>#</th><th>الطبق</th><th style="text-align:end">${bf.length&&rows.length===i&&!o.items.some(l=>{const m=byId(l.id);return m&&!m.buffet})?'':'الكمية'}</th></tr></thead><tbody>${rows.join('')}</tbody></table>${extra}
   ${P?`<div class="pv-tot"><span>الخطة</span><span>${ar(P.name)}</span><span>عدد الأشخاص</span><span>${ppl}</span><span>سعر الفرد</span><span>${bhd(priceOf(P.id))} د.ب</span><span class="g">الإجمالي</span><span class="g">${bhd(tot)} د.ب</span></div>`:'<div style="margin-top:auto"></div>'}
-  <div class="pv-stamp">مؤكد ✓</div>
+  ${o.status==='review'?'':'<div class="pv-stamp">مؤكد ✓</div>'}
   <div class="pv-foot">شكراً لاختياركم فريج بن عاقول · أصالة الماضي، بإبداع الحاضر</div>
  </div>`;
 }
+const pdfKey=o=>o.id+(o.status==='review'?':new':':ok');
 async function makePdf(o){
- if(pdfCache.has(o.id))return pdfCache.get(o.id);
+ if(pdfCache.has(pdfKey(o)))return pdfCache.get(pdfKey(o));
  await pdfLibs();
  let st=$('#pdf-stage');if(!st){st=document.createElement('div');st.id='pdf-stage';document.body.appendChild(st)}
  st.innerHTML=pdfHTML(o);const el=st.firstElementChild;
@@ -1887,13 +1912,21 @@ async function makePdf(o){
  const img=cv.toDataURL('image/jpeg',.9);
  const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4',compress:true});doc.addImage(img,'JPEG',0,0,210,297);
  const blob=doc.output('blob'),file=new File([blob],`${o.id}.pdf`,{type:'application/pdf'});
- const r={blob,file,url:URL.createObjectURL(blob),thumb:cv.toDataURL('image/jpeg',.6)};pdfCache.set(o.id,r);return r;
+ const r={blob,file,url:URL.createObjectURL(blob),thumb:cv.toDataURL('image/jpeg',.6)};pdfCache.set(pdfKey(o),r);return r;
 }
-const custWaText=o=>`مرحباً ${o.name}، تم تأكيد طلبك رقم ${o.id} من فريج بن عاقول. مرفق ملف التأكيد.`;
-const custWaLink=o=>{const n=String(o.phone||'').replace(/\D/g,'').replace(/^973/,'');return n?`https://wa.me/973${n}?text=${encodeURIComponent(custWaText(o))}`:''};
+const isNewO=o=>o.status==='review';
+const custWaText=o=>isNewO(o)?`طلب بوفية جديد رقم ${o.id}\nالاسم: ${o.name}\nالهاتف: ${o.phone}${o.ev?`\nالموعد: ${o.ev.date} من ${o.ev.from}${o.ev.to?' إلى '+o.ev.to:''}`:''}\nمرفق ملف الطلب.`:`مرحباً ${o.name}، تم تأكيد طلبك رقم ${o.id} من فريج بن عاقول. مرفق ملف التأكيد.`;
+const custWaLink=o=>{const n=isNewO(o)?ORDER_WA:'973'+String(o.phone||'').replace(/\D/g,'').replace(/^973/,'');return n.length>3?`https://wa.me/${n}?text=${encodeURIComponent(custWaText(o))}`:''};
 function sPdf(id){
  const o=store.orders.find(x=>x.id===id);if(!o)return head(L('ملف التأكيد','Confirmation PDF'));
- const r=pdfCache.get(id);
+ const r=pdfCache.get(pdfKey(o)),nw=isNewO(o);
+ if(nw)return head(L('آخر خطوة: أرسل طلبك','Last step: send your order'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف الطلب','Order preview')}">`:`<div class="empty">${L('نجهز ملف الطلب…','Preparing your order file…')}</div>`)+`
+ <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L('اضغط الزر ليوصل ملف طلبك للمطعم على الواتساب. ما نعتمد الطلب إلا بعد ما يوصلنا.','Tap the button to send your order file to the restaurant on WhatsApp. We only confirm it once it reaches us.')}</p>
+ <div class="pdf-acts">
+  <button class="btn btn-wa btn-block" data-act="pdf-wa" data-id="${o.id}" ${r?'':'disabled'}>${L('إرسال الطلب عبر الواتساب','Send order on WhatsApp')}</button>
+  <button class="btn btn-soft btn-block" data-act="pdf-track" data-id="${o.id}">${L('متابعة الطلب','Track order')}</button>
+ </div>
+ <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('على الجوال اختر الواتساب ثم أرسل. على الكمبيوتر ينحفظ الملف وتنفتح المحادثة، اسحب الملف فيها.','On a phone, pick WhatsApp and send. On a computer the file is saved and the chat opens; drag the file into it.')}</span>`;
  return head(L('ملف التأكيد جاهز','Confirmation PDF ready'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف التأكيد','Confirmation preview')}">`:`<div class="empty">${L('نجهز الملف…','Preparing the file…')}</div>`)+`
  <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L(`أرسل الملف إلى ${esc(o.name)} على <bdi>+973 ${esc(o.phone)}</bdi>`,`Send it to ${esc(o.name)} on +973 ${esc(o.phone)}`)}</p>
  <div class="pdf-acts">
@@ -1906,7 +1939,7 @@ async function pdfOpen(id){
  const o=store.orders.find(x=>x.id===id);if(!o)return;
  openSheet('pdf',id);
  try{await makePdf(o);if(sheetKind==='pdf'&&sheetArg===id)renderSheet()}
- catch(e){toast(L('ما قدرنا نجهز الملف. تأكد من الاتصال بالإنترنت وحاول مرة ثانية.','Could not build the PDF. Check the internet connection and try again.'));closeSheet()}
+ catch(e){toast(L('ما قدرنا نجهز الملف. تأكد من الاتصال بالإنترنت وحاول مرة ثانية.','Could not build the PDF. Check the internet connection and try again.'));if(isNewO(o)){const w=custWaLink(o);if(w)window.open(w,'_blank','noopener');openSheet('track',id)}else closeSheet()}
 }
 function pdfDownload(r,id){const a=document.createElement('a');a.href=r.url;a.download=`${id}.pdf`;document.body.appendChild(a);a.click();a.remove()}
 function renderBoard(){
@@ -2034,10 +2067,12 @@ document.addEventListener('click',async e=>{
   case 'copy':copy(v,t);break;
   case 'submit':submitOrder();break;
   case 'btab':bTab=v;rejecting=null;renderBoard();break;
+  case 'slot':{readCartForm();checkout.from=v;const a=tMin(v);let b=a+BF_DEF_LEN*60;while(b>a+60&&!bfFits(checkout.date,a,b))b-=60;checkout.to=tStr(b);if(checkout.errors){delete checkout.errors.from;delete checkout.errors.to}const sl=$('#c-slots');if(sl)sl.innerHTML=slotHTML(checkout.errors||{});break}
   case 'acc-pdf':{const o=store.orders.find(x=>x.id===id);if(!o)break;o.status='confirmed';o.reason='';save();renderBoard();toast(`${o.id}: ${STATUS.confirmed}`);pdfOpen(id);break}
   case 'pdf-send':pdfOpen(id);break;
-  case 'pdf-dl':{const r=pdfCache.get(id);if(r)pdfDownload(r,id);break}
-  case 'pdf-wa':{const o=store.orders.find(x=>x.id===id),r=pdfCache.get(id);if(!o||!r)break;
+  case 'pdf-dl':{const o=store.orders.find(x=>x.id===id),r=o&&pdfCache.get(pdfKey(o));if(r)pdfDownload(r,id);break}
+  case 'pdf-track':openSheet('track',id);break;
+  case 'pdf-wa':{const o=store.orders.find(x=>x.id===id),r=o&&pdfCache.get(pdfKey(o));if(!o||!r)break;
    if(navigator.canShare&&navigator.canShare({files:[r.file]})){try{await navigator.share({files:[r.file],text:custWaText(o)})}catch(err){}break}
    pdfDownload(r,id);const w=custWaLink(o);if(w)window.open(w,'_blank','noopener');break}
   case 'adv':{const o=store.orders.find(x=>x.id===id);o.status=v;o.reason='';save();renderBoard();toast(`${o.id}: ${STATUS[v]}`);break}
