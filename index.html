@@ -1590,7 +1590,7 @@ function bfAddToCart(){
  addToCart(P.id,1,note);bfRefreshCards();toast(L(`أُضيفت ${P.name} للسلة`,`${P.name} added to cart`));
 }
 function sGallery(){const all=galleryAll();return head(L('بوفيتنا','Our buffets'))+`<p style="color:var(--muted);margin:0 0 12px">${L('صور من بوفيات قدمناها. اضغط على أي صورة لتكبيرها.','Photos from buffets we served. Tap any photo to enlarge it.')}</p><div class="gal-grid">${all.map((g,i)=>`<button data-act="gal-view" data-v="${i}" aria-label="${L('عرض الصورة','View photo')} ${i+1}"><img src="${g.src}" alt="" loading="lazy"></button>`).join('')}</div>
- <div class="sh-foot"><button class="btn btn-main btn-block" data-act="gal-order">${L('اطلب بوفيتك','Order your buffet')}</button></div>`}
+ <div class="sh-foot"><button class="btn btn-main btn-block" data-act="gal-order">${L('اطلب بوفيهك','Order your buffet')}</button></div>`}
 function sBfAsk(mid){
  const m=byId(mid);
  return head(L('اختر خطة البوفية','Choose your buffet plan'))+`
@@ -1913,7 +1913,7 @@ function renderGallery(){
  el.innerHTML=`<header class="b-head"><div class="wrap"><div class="row"><a class="icon-btn" href="#" aria-label="${L('رجوع للمنيو','Back to menu')}">${ic('back')}</a><h1>${L('بوفيتنا','Our buffets')}</h1><button class="icon-btn lang-btn" data-act="lang" aria-label="${L('Switch to English','التبديل إلى العربية')}">${lang==='en'?'<span class="l-ar">ع</span>':'EN'}</button></div></div></header>
  <div class="wrap gp-wrap"><p class="gp-sub"><span class="num">${all.length}</span> ${L('صورة من بوفيات قدمناها في البيوت والمكاتب والمدارس.','photos from buffets we served at homes, offices and schools.')}</p>
  <div class="gp-grid">${all.map((g,i)=>`<button data-act="lb-open" data-v="${i}" aria-label="${L('عرض الصورة','View photo')} ${i+1}"><img src="${g.src}" alt="" loading="lazy"></button>`).join('')}</div>
- <a class="btn btn-main btn-block gp-cta" href="#" data-act="gal-order">${L('اطلب بوفيتك','Order your buffet')}</a></div>`;
+ <a class="btn btn-main btn-block gp-cta" href="#" data-act="gal-order">${L('اطلب بوفيهك','Order your buffet')}</a></div>`;
  const g=G();if(g&&!RM)g.from('.gp-grid button',{y:18,opacity:0,duration:.5,stagger:.035,ease:'expo.out',clearProps:'all'});
 }
 function lbShow(i){const all=galleryAll();if(!all.length)return;{const lb=$('#lb');$('.lb-x',lb).innerHTML=ic('plus',22);$('.lb-x',lb).style.transform='rotate(45deg)';$('.lb-prev',lb).innerHTML=ic('chev',22);$('.lb-next',lb).innerHTML=ic('chev',22);$('.lb-prev',lb).style.transform=lang==='en'?'scaleX(-1)':'';$('.lb-next',lb).style.transform=lang==='en'?'':'scaleX(-1)';$('.lb-x',lb).setAttribute('aria-label',L('إغلاق','Close'));$('.lb-prev',lb).setAttribute('aria-label',L('السابقة','Previous'));$('.lb-next',lb).setAttribute('aria-label',L('التالية','Next'))}lbI=(i+all.length)%all.length;const lb=$('#lb'),im=$('img',lb);im.src=all[lbI].src;$('.lb-n',lb).textContent=`${lbI+1} / ${all.length}`;lb.hidden=false;const g=G();if(g&&!RM)g.fromTo(im,{opacity:0,scale:.97},{opacity:1,scale:1,duration:.35,ease:'expo.out'})}
