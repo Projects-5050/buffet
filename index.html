@@ -1265,7 +1265,7 @@ const MENU=[
  {id:'s9',b:'fareeq',cat:'sides',name:'سمبوسة جبن',desc:'سمبوسة مقرمشة محشية جبن.',price:.5,hue:'#e0a83a',img:'img/s-sambosa.jpg'},
  {id:'s10',b:'fareeq',cat:'sides',name:'جبن كريمي',desc:'علبة جبن بالقشطة.',price:.3,hue:'#dfe6ea',img:'img/s-cream.jpg'},
  {id:'s11',b:'fareeq',cat:'sides',name:'روب',desc:'روب طبيعي طازج.',price:.3,hue:'#dfe6ea',img:'img/s-yogurt.jpg'},
- {id:'w1',b:'fareeq',cat:'sweets',name:'فطيطة',desc:'فطيطة بحرينية بالسكر والهيل.',img:'img/w-fateeta.jpg',price:1.0,hue:'#f0d9a0',art:{t:'bowl',food:'#f0d9a0',pool:'#e5a83a',bowl:'#7a3e22',seed:16}},
+ {id:'w1',b:'fareeq',cat:'sweets',name:'فتيتة',desc:'فتيتة بحرينية بالسكر والهيل.',img:'img/w-fateeta.jpg',price:1.0,hue:'#f0d9a0',art:{t:'bowl',food:'#f0d9a0',pool:'#e5a83a',bowl:'#7a3e22',seed:16}},
  {id:'f4',b:'fareeq',cat:'sweets',name:'عصيدة',desc:'عصيدة بالسمن والهيل.',price:1.0,hue:'#e7a03a',img:'img/w-aseeda.jpg'},
  {id:'f1',b:'fareeq',cat:'sweets',name:'بلاليط',desc:'شعيرية حلوة بالهيل مع عجة بيض.',price:1.0,hue:'#ffb02e',img:'img/w-balaleet.jpg'},
  {id:'w2',b:'fareeq',cat:'sweets',name:'لقيمات',desc:'لقيمات مقرمشة بالدبس والسمسم.',price:1.0,hue:'#e0962e',img:'img/w-luqaimat.jpg',hot:1},
@@ -1358,7 +1358,7 @@ function seedStore(){
  ];
  return {v:1,seq:1038,settings:{holder:'مطعم فريج بن عاقول',bank:'اسم البنك',iban:'BH67BMAG00001299123456',benefit:'33000000',fee:.5,pin:'1234',apin:'4321',sample:true,wa:{all:''}},buffet:seedBuffet(),menuEdits:{},orders:orders.filter(o=>o.items.every(l=>byId(l.id))),mine:[],profile:{name:'',phone:'',branch:''},carts:{fareeq:[],buns:[]}};
 }
-function loadStore(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.v===1){if(s.settings&&s.settings.holder==='مطعم فريق بن عاقول')s.settings.holder='مطعم فريج بن عاقول';['fareeq','buns'].forEach(b=>s.carts[b]=(s.carts[b]||[]).filter(l=>byId(l.id)));s.orders=s.orders.filter(o=>o.items.every(l=>byId(l.id)));if(!Array.isArray(s.buffet))s.buffet=seedBuffet();s.buffet=s.buffet.filter(x=>!REMOVED.some(r=>x.id==='bi-'+r));['s6','s7'].forEach(id=>{const m=MENU.find(z=>z.id===id);if(m&&!s.buffet.some(x=>x.id==='bi-'+id))s.buffet.push({id:'bi-'+id,name:m._ar?m._ar[0]:m.name})});s.buffet.forEach(x=>{if(x.id==='bi-m9'&&x.name==='صالونة دجاج')x.name='ناشف دجاج'});if(!s.settings.wa)s.settings.wa={all:''};if(!s.settings.apin)s.settings.apin='4321';if(!Array.isArray(s.gallery))s.gallery=[];return s}}catch(e){}return seedStore()}
+function loadStore(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.v===1){if(s.settings&&s.settings.holder==='مطعم فريق بن عاقول')s.settings.holder='مطعم فريج بن عاقول';['fareeq','buns'].forEach(b=>s.carts[b]=(s.carts[b]||[]).filter(l=>byId(l.id)));s.orders=s.orders.filter(o=>o.items.every(l=>byId(l.id)));if(!Array.isArray(s.buffet))s.buffet=seedBuffet();s.buffet=s.buffet.filter(x=>!REMOVED.some(r=>x.id==='bi-'+r));['s6','s7'].forEach(id=>{const m=MENU.find(z=>z.id===id);if(m&&!s.buffet.some(x=>x.id==='bi-'+id))s.buffet.push({id:'bi-'+id,name:m._ar?m._ar[0]:m.name})});s.buffet.forEach(x=>{if(x.id==='bi-m9'&&x.name==='صالونة دجاج')x.name='ناشف دجاج';if(x.id==='bi-w1'&&x.name==='فطيطة')x.name='فتيتة'});if(!s.settings.wa)s.settings.wa={all:''};if(!s.settings.apin)s.settings.apin='4321';if(!Array.isArray(s.gallery))s.gallery=[];return s}}catch(e){}return seedStore()}
 let store=loadStore();
 function save(){
  for(let tries=0;tries<3;tries++){
