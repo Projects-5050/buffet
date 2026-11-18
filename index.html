@@ -2026,7 +2026,7 @@ function sPdf(id){
   <button class="btn btn-soft btn-block" data-act="pdf-dl" data-id="${o.id}" ${r?'':'disabled'}>${ic('download',18)}${L('حفظ الطلب PDF','Save order as PDF')}</button>
   <button class="btn btn-soft btn-block" data-act="pdf-track" data-id="${o.id}">${L('متابعة الطلب','Track order')}</button>
  </div>
- <span class="hint" style="display:block;margin-top:12px;text-align:center">${matchMedia('(pointer:coarse)').matches?L('اضغط الزر الأخضر ← اختر <b>واتساب</b> ← اختر محادثة المطعم ← إرسال. الصورة تنرفق لحالها.','Tap the green button → choose <b>WhatsApp</b> → choose the restaurant chat → Send. The image is attached for you.'):L('اضغط الزر الأخضر: تنسخ الصورة وتنفتح محادثة المطعم، الصقها (Ctrl+V) وأرسل.','Tap the green button: the image is copied and the restaurant chat opens; paste it (Ctrl+V) and send.')}</span>`;
+ <span class="hint" style="display:block;margin-top:12px;text-align:center">${matchMedia('(pointer:coarse)').matches?L('اضغط الزر الأخضر ← اختر <b>واتساب</b> ← اختر محادثة المطعم ← إرسال. الصورة تنرفق لحالها.','Tap the green button → choose <b>WhatsApp</b> → choose the restaurant chat → Send. The image is attached for you.'):L('اضغط الزر الأخضر: تنسخ الصورة وتنحفظ في التنزيلات وتنفتح محادثة المطعم. الصقها (Ctrl+V) أو اسحبها في المحادثة وأرسل.','Tap the green button: the image is copied, saved to Downloads, and the restaurant chat opens. Paste it (Ctrl+V) or drag it into the chat and send.')}</span>`;
  return head(L('ملف التأكيد جاهز','Confirmation PDF ready'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف التأكيد','Confirmation preview')}">`:`<div class="empty">${L('نجهز الملف…','Preparing the file…')}</div>`)+`
  <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L(`أرسل الملف إلى ${esc(o.name)} على <bdi>+973 ${esc(o.phone)}</bdi>`,`Send it to ${esc(o.name)} on +973 ${esc(o.phone)}`)}</p>
  <div class="pdf-acts">
@@ -2035,12 +2035,14 @@ function sPdf(id){
  </div>
  <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('على الجوال تختار الواتساب ثم الزبون. على الكمبيوتر ينحفظ الملف وتنفتح محادثة الزبون، اسحب الملف فيها.','On a phone, pick WhatsApp then the customer. On a computer the file is saved and the chat opens; drag the file into it.')}</span>`;
 }
+function saveImg(r,id){try{const a=document.createElement('a');a.href=URL.createObjectURL(r.img);a.download=`${id}.jpg`;document.body.appendChild(a);a.click();a.remove()}catch(e){}}
 function sendOrderNow(o){
  const coarse=matchMedia('(pointer:coarse)').matches;
  if(coarse){pdfOpen(o.id);return}   // phone: show the ready image + one share button (reliable, no paste)
  const p=makePdf(o),w=custWaLink(o);
- try{if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem)navigator.clipboard.write([new ClipboardItem({'image/png':p.then(r=>new Promise(res=>r.cv.toBlob(res,'image/png')))})]).then(()=>toast(L('نسخنا صورة الطلب، الصقها في محادثة الواتساب (Ctrl+V) وأرسل.','Order image copied. Paste it in the WhatsApp chat (Ctrl+V) and send.'))).catch(()=>{})}catch(e){}
+ try{if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem)navigator.clipboard.write([new ClipboardItem({'image/png':p.then(r=>new Promise(res=>r.cv.toBlob(res,'image/png')))})]).then(()=>toast(L('صورة الطلب منسوخة ومحفوظة في التنزيلات. الصقها (Ctrl+V) أو اسحبها في محادثة الواتساب وأرسل.','The order image is copied and saved to Downloads. Paste it (Ctrl+V) or drag it into the WhatsApp chat and send.'))).catch(()=>{})}catch(e){}
  if(w)window.open(w,'_blank','noopener');
+ p.then(r=>saveImg(r,o.id)).catch(()=>{});
  pdfOpen(o.id);
 }
 async function pdfOpen(id){
@@ -2195,7 +2197,7 @@ document.addEventListener('click',async e=>{
    if(matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[r.img]})){try{await navigator.share({files:[r.img]})}catch(err){if(err&&err.name!=='AbortError'){const w=custWaLink(o);if(w)window.open(w,'_blank','noopener')}}break}
    const w=custWaLink(o);let copied=false;
    try{if(navigator.clipboard&&window.ClipboardItem){navigator.clipboard.write([new ClipboardItem({'image/png':new Promise(res=>r.cv.toBlob(res,'image/png'))})]).then(()=>toast(L('نسخنا صورة الطلب، الصقها في محادثة الواتساب (Ctrl+V) وأرسل.','Order image copied. Paste it in the WhatsApp chat (Ctrl+V) and send.'))).catch(()=>{const a=document.createElement('a');a.href=URL.createObjectURL(r.img);a.download=`${id}.jpg`;document.body.appendChild(a);a.click();a.remove();toast(L('نزّلنا صورة الطلب، أرفقها في محادثة الواتساب وأرسل.','Order image downloaded. Attach it in the WhatsApp chat and send.'))});copied=true}}catch(err){}
-   if(!copied){const a=document.createElement('a');a.href=URL.createObjectURL(r.img);a.download=`${id}.jpg`;document.body.appendChild(a);a.click();a.remove()}
+   saveImg(r,id);
    if(w)window.open(w,'_blank','noopener');break}
   case 'adv':{const o=store.orders.find(x=>x.id===id);o.status=v;o.reason='';save();renderBoard();toast(`${o.id}: ${STATUS[v]}`);break}
   case 'rej':rejecting=id;rejReason='';renderBoard();break;
