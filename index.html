@@ -1740,7 +1740,7 @@ function submitOrder(){
  if(!save()){toast(L('مساحة التخزين ممتلئة، احذف طلبات قديمة من لوحة الفرع','Storage is full. Delete old orders from the branch board'));return}
  checkout.receipt=null;checkout.errors={};if(o.ev){checkout.date='';checkout.from='';checkout.to=''}
  renderMenu();
- if(isBuffetOrder(o)){const w=custWaLink(o);if(w)window.open(w,'_blank','noopener');pdfOpen(o.id)}else{const w=waLink(o);if(w)window.open(w,'_blank','noopener');openSheet('track',o.id)}
+ if(isBuffetOrder(o)){pdfOpen(o.id)}else{const w=waLink(o);if(w)window.open(w,'_blank','noopener');openSheet('track',o.id)}
 }
 const FLOW=['review','confirmed','preparing','ready','done'];
 const isBuffetOrder=o=>o.items.some(l=>{const m=byId(l.id);return m&&m.buffet});
@@ -2017,14 +2017,14 @@ const custWaLink=o=>{const n=isNewO(o)?ORDER_WA:'973'+String(o.phone||'').replac
 function sPdf(id){
  const o=store.orders.find(x=>x.id===id);if(!o)return head(L('ملف التأكيد','Confirmation PDF'));
  const r=pdfCache.get(pdfKey(o)),nw=isNewO(o);
- if(nw)return head(L('تم إرسال طلبك','Your order was sent'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف الطلب','Order preview')}">`:pdfFail.has(pdfKey(o))?`<div class="empty">${L('ما قدرنا نجهز ملف PDF. طلبك محفوظ، اضغط «حاول مرة ثانية».','We could not build the PDF. Your order is saved; tap “Try again”.')}<br><button class="btn btn-soft" style="margin-top:10px" data-act="pdf-retry" data-id="${o.id}">${L('حاول مرة ثانية','Try again')}</button></div>`:`<div class="empty">${L('نجهز ملف الطلب…','Preparing your order file…')}</div>`)+`
- <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L('انفتح الواتساب برسالة للمطعم أن عندك طلب جديد. نزّل ملف الطلب PDF واحتفظ فيه، وتقدر ترسله في نفس المحادثة.','WhatsApp opened with a message telling the restaurant you have a new order. Download your order PDF to keep it; you can send it in the same chat.')}</p>
+ if(nw)return head(L('آخر خطوة: أرسل ملف طلبك','Last step: send your order file'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف الطلب','Order preview')}">`:pdfFail.has(pdfKey(o))?`<div class="empty">${L('ما قدرنا نجهز ملف PDF. طلبك محفوظ، اضغط «حاول مرة ثانية».','We could not build the PDF. Your order is saved; tap “Try again”.')}<br><button class="btn btn-soft" style="margin-top:10px" data-act="pdf-retry" data-id="${o.id}">${L('حاول مرة ثانية','Try again')}</button></div>`:`<div class="empty">${L('نجهز ملف الطلب…','Preparing your order file…')}</div>`)+`
+ <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L('اضغط الزر وأرسل ملف الطلب PDF للمطعم على الواتساب <span dir="ltr" style="unicode-bidi:isolate">+973 33787872</span>.','Tap the button and send the order PDF to the restaurant on WhatsApp +973 33787872.')}</p>
  <div class="pdf-acts">
-  <button class="btn btn-main btn-block" data-act="pdf-dl" data-id="${o.id}" ${r?'':'disabled'}>${ic('download',18)}${L('تنزيل ملف الطلب PDF','Download order PDF')}</button>
-  <button class="btn btn-wa btn-block" data-act="wa-new" data-id="${o.id}">${L('إعادة إبلاغ المطعم عبر الواتساب','Notify the restaurant again on WhatsApp')}</button>
+  <button class="btn btn-wa btn-block" data-act="pdf-wa" data-id="${o.id}" ${r?'':'disabled'}>${L('إرسال الطلب PDF عبر الواتساب','Send order PDF on WhatsApp')}</button>
+  <button class="btn btn-soft btn-block" data-act="pdf-dl" data-id="${o.id}" ${r?'':'disabled'}>${ic('download',18)}${L('تنزيل ملف الطلب PDF','Download order PDF')}</button>
   <button class="btn btn-soft btn-block" data-act="pdf-track" data-id="${o.id}">${L('متابعة الطلب','Track order')}</button>
  </div>
- <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('لو ما انفتح الواتساب، اضغط «إعادة إبلاغ المطعم».','If WhatsApp did not open, tap “Notify the restaurant again”.')}</span>`;
+ <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('على الجوال: تنفتح قائمة المشاركة، اختر الواتساب ثم محادثة المطعم وأرسل. على الكمبيوتر: ينحفظ الملف وتنفتح محادثة المطعم، اسحب الملف فيها.','On a phone: the share menu opens, pick WhatsApp, then the restaurant chat, and send. On a computer: the file is saved and the restaurant chat opens; drag the file into it.')}</span>`;
  return head(L('ملف التأكيد جاهز','Confirmation PDF ready'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف التأكيد','Confirmation preview')}">`:`<div class="empty">${L('نجهز الملف…','Preparing the file…')}</div>`)+`
  <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L(`أرسل الملف إلى ${esc(o.name)} على <bdi>+973 ${esc(o.phone)}</bdi>`,`Send it to ${esc(o.name)} on +973 ${esc(o.phone)}`)}</p>
  <div class="pdf-acts">
