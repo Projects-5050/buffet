@@ -2009,7 +2009,8 @@ async function makePdf(o){
  const jb=await new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('jpeg')),'image/jpeg',.9));
  const bytes=new Uint8Array(await jb.arrayBuffer());
  const blob=jpegPdf(bytes,cv.width,cv.height),file=new File([blob],`${o.id}.pdf`,{type:'application/pdf'});
- const r={blob,file,url:URL.createObjectURL(blob),thumb:cv.toDataURL('image/jpeg',.6)};pdfCache.set(pdfKey(o),r);return r;
+ const img=new File([jb],`${o.id}.jpg`,{type:'image/jpeg'});
+ const r={blob,file,img,cv,url:URL.createObjectURL(blob),thumb:cv.toDataURL('image/jpeg',.6)};pdfCache.set(pdfKey(o),r);return r;
 }
 const isNewO=o=>o.status==='review';
 const custWaText=o=>isNewO(o)?`🔔 يوجد طلب بوفية جديد رقم ${o.id}\nالاسم: ${o.name}\nالهاتف: ${o.phone}${o.ev?`\nالموعد: ${o.ev.date} من ${o.ev.from}${o.ev.to?' إلى '+o.ev.to:''}`:''}${o.ev&&o.ev.tea?`\nالشاي: ${teaNames(o.ev.tea)}`:''}\nتفاصيل الطلب في ملف PDF.`:(o.lang==='en'?`Hello ${o.name}, your order ${o.id} from Fareeq Bin Aqool is confirmed. The confirmation file is attached.`:`مرحباً ${o.name}، تم تأكيد طلبك رقم ${o.id} من فريج بن عاقول. مرفق ملف التأكيد.`);
@@ -2017,14 +2018,14 @@ const custWaLink=o=>{const n=isNewO(o)?ORDER_WA:'973'+String(o.phone||'').replac
 function sPdf(id){
  const o=store.orders.find(x=>x.id===id);if(!o)return head(L('ملف التأكيد','Confirmation PDF'));
  const r=pdfCache.get(pdfKey(o)),nw=isNewO(o);
- if(nw)return head(L('آخر خطوة: أرسل ملف طلبك','Last step: send your order file'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف الطلب','Order preview')}">`:pdfFail.has(pdfKey(o))?`<div class="empty">${L('ما قدرنا نجهز ملف PDF. طلبك محفوظ، اضغط «حاول مرة ثانية».','We could not build the PDF. Your order is saved; tap “Try again”.')}<br><button class="btn btn-soft" style="margin-top:10px" data-act="pdf-retry" data-id="${o.id}">${L('حاول مرة ثانية','Try again')}</button></div>`:`<div class="empty">${L('نجهز ملف الطلب…','Preparing your order file…')}</div>`)+`
- <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L('اضغط الزر وأرسل ملف الطلب PDF للمطعم على الواتساب <span dir="ltr" style="unicode-bidi:isolate">+973 33787872</span>.','Tap the button and send the order PDF to the restaurant on WhatsApp +973 33787872.')}</p>
+ if(nw)return head(L('آخر خطوة: أرسل طلبك','Last step: send your order'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف الطلب','Order preview')}">`:pdfFail.has(pdfKey(o))?`<div class="empty">${L('ما قدرنا نجهز ملف PDF. طلبك محفوظ، اضغط «حاول مرة ثانية».','We could not build the PDF. Your order is saved; tap “Try again”.')}<br><button class="btn btn-soft" style="margin-top:10px" data-act="pdf-retry" data-id="${o.id}">${L('حاول مرة ثانية','Try again')}</button></div>`:`<div class="empty">${L('نجهز ملف الطلب…','Preparing your order file…')}</div>`)+`
+ <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L('اضغط الزر وأرسل صورة الطلب للمطعم على الواتساب <span dir="ltr" style="unicode-bidi:isolate">+973 33787872</span>، وتقدر تحفظ نسخة PDF عندك.','Tap the button to send the order image to the restaurant on WhatsApp +973 33787872. You can also save a PDF copy.')}</p>
  <div class="pdf-acts">
-  <button class="btn btn-wa btn-block" data-act="pdf-wa" data-id="${o.id}" ${r?'':'disabled'}>${L('إرسال الطلب PDF عبر الواتساب','Send order PDF on WhatsApp')}</button>
-  <button class="btn btn-soft btn-block" data-act="pdf-dl" data-id="${o.id}" ${r?'':'disabled'}>${ic('download',18)}${L('تنزيل ملف الطلب PDF','Download order PDF')}</button>
+  <button class="btn btn-wa btn-block" data-act="pdf-wa" data-id="${o.id}" ${r?'':'disabled'}>${L('إرسال الطلب صورة عبر الواتساب','Send order image on WhatsApp')}</button>
+  <button class="btn btn-soft btn-block" data-act="pdf-dl" data-id="${o.id}" ${r?'':'disabled'}>${ic('download',18)}${L('حفظ الطلب PDF','Save order as PDF')}</button>
   <button class="btn btn-soft btn-block" data-act="pdf-track" data-id="${o.id}">${L('متابعة الطلب','Track order')}</button>
  </div>
- <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('على الجوال: تنفتح قائمة المشاركة، اختر الواتساب ثم محادثة المطعم وأرسل. على الكمبيوتر: ينحفظ الملف وتنفتح محادثة المطعم، اسحب الملف فيها.','On a phone: the share menu opens, pick WhatsApp, then the restaurant chat, and send. On a computer: the file is saved and the restaurant chat opens; drag the file into it.')}</span>`;
+ <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('على الجوال: تنفتح قائمة المشاركة، اختر الواتساب ثم محادثة المطعم وأرسل. على الكمبيوتر: تنسخ الصورة وتنفتح محادثة المطعم، الصقها (Ctrl+V) وأرسل.','On a phone: the share menu opens, pick WhatsApp, then the restaurant chat, and send. On a computer: the image is copied and the restaurant chat opens; paste it (Ctrl+V) and send.')}</span>`;
  return head(L('ملف التأكيد جاهز','Confirmation PDF ready'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف التأكيد','Confirmation preview')}">`:`<div class="empty">${L('نجهز الملف…','Preparing the file…')}</div>`)+`
  <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L(`أرسل الملف إلى ${esc(o.name)} على <bdi>+973 ${esc(o.phone)}</bdi>`,`Send it to ${esc(o.name)} on +973 ${esc(o.phone)}`)}</p>
  <div class="pdf-acts">
@@ -2182,8 +2183,11 @@ document.addEventListener('click',async e=>{
   case 'pdf-retry':{const o=store.orders.find(x=>x.id===id);if(o)pdfFail.delete(pdfKey(o));pdfOpen(id);break}
   case 'wa-new':{const o=store.orders.find(x=>x.id===id),w=o&&custWaLink(o);if(w)window.open(w,'_blank','noopener');break}
   case 'pdf-wa':{const o=store.orders.find(x=>x.id===id),r=o&&pdfCache.get(pdfKey(o));if(!o||!r)break;
-   if(navigator.canShare&&navigator.canShare({files:[r.file]})){try{await navigator.share({files:[r.file],text:custWaText(o)})}catch(err){}break}
-   pdfDownload(r,id);const w=custWaLink(o);if(w)window.open(w,'_blank','noopener');break}
+   if(navigator.canShare&&navigator.canShare({files:[r.img]})){try{await navigator.share({files:[r.img],text:custWaText(o)})}catch(err){}break}
+   const w=custWaLink(o);let copied=false;
+   try{if(navigator.clipboard&&window.ClipboardItem){navigator.clipboard.write([new ClipboardItem({'image/png':new Promise(res=>r.cv.toBlob(res,'image/png'))})]).then(()=>toast(L('نسخنا صورة الطلب، الصقها في محادثة الواتساب (Ctrl+V) وأرسل.','Order image copied. Paste it in the WhatsApp chat (Ctrl+V) and send.'))).catch(()=>{const a=document.createElement('a');a.href=URL.createObjectURL(r.img);a.download=`${id}.jpg`;document.body.appendChild(a);a.click();a.remove();toast(L('نزّلنا صورة الطلب، أرفقها في محادثة الواتساب وأرسل.','Order image downloaded. Attach it in the WhatsApp chat and send.'))});copied=true}}catch(err){}
+   if(!copied){const a=document.createElement('a');a.href=URL.createObjectURL(r.img);a.download=`${id}.jpg`;document.body.appendChild(a);a.click();a.remove()}
+   if(w)window.open(w,'_blank','noopener');break}
   case 'adv':{const o=store.orders.find(x=>x.id===id);o.status=v;o.reason='';save();renderBoard();toast(`${o.id}: ${STATUS[v]}`);break}
   case 'rej':rejecting=id;rejReason='';renderBoard();break;
   case 'rr':rejReason=v;renderBoard();break;
