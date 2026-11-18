@@ -1677,7 +1677,7 @@ function sCart(){
     ${checkout.loc&&/^https?:/.test(checkout.loc)?`<a class="hint" href="${esc(checkout.loc)}" target="_blank" rel="noopener" style="color:var(--orange-ink);font-weight:600">${L('عرض الموقع على الخريطة','View on the map')}</a>`:''}
     ${e.loc?`<span class="err">${e.loc}</span>`:''}</div>
   </div>`:''}
-  <div class="sh-foot"><button class="btn btn-main btn-block" data-act="to-pay">${L('أرسل الطلب','Place order')}</button><span class="hint" style="text-align:center">${cartHasBf()?L('بتنفتح محادثة المطعم على الواتساب وصورة الطلب منسوخة، الصقها وأرسل.','The restaurant WhatsApp chat opens with the order image copied; paste it and send.'):B.ar}</span></div>`;
+  <div class="sh-foot"><button class="btn btn-main btn-block" data-act="to-pay">${L('أرسل الطلب','Place order')}</button><span class="hint" style="text-align:center">${cartHasBf()?L('بعد الإرسال ترسل صورة الطلب للمطعم على الواتساب.','Next, you send the order image to the restaurant on WhatsApp.'):B.ar}</span></div>`;
 }
 function readCartForm(){
  const n=$('#c-name'),ph=$('#c-phone'),ad=$('#c-addr');
@@ -2026,7 +2026,7 @@ function sPdf(id){
   <button class="btn btn-soft btn-block" data-act="pdf-dl" data-id="${o.id}" ${r?'':'disabled'}>${ic('download',18)}${L('حفظ الطلب PDF','Save order as PDF')}</button>
   <button class="btn btn-soft btn-block" data-act="pdf-track" data-id="${o.id}">${L('متابعة الطلب','Track order')}</button>
  </div>
- <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('على الجوال: تنفتح قائمة المشاركة، اختر الواتساب ثم محادثة المطعم وأرسل. على الكمبيوتر: تنسخ الصورة وتنفتح محادثة المطعم، الصقها (Ctrl+V) وأرسل.','On a phone: the share menu opens, pick WhatsApp, then the restaurant chat, and send. On a computer: the image is copied and the restaurant chat opens; paste it (Ctrl+V) and send.')}</span>`;
+ <span class="hint" style="display:block;margin-top:12px;text-align:center">${matchMedia('(pointer:coarse)').matches?L('اضغط الزر الأخضر ← اختر <b>واتساب</b> ← اختر محادثة المطعم ← إرسال. الصورة تنرفق لحالها.','Tap the green button → choose <b>WhatsApp</b> → choose the restaurant chat → Send. The image is attached for you.'):L('اضغط الزر الأخضر: تنسخ الصورة وتنفتح محادثة المطعم، الصقها (Ctrl+V) وأرسل.','Tap the green button: the image is copied and the restaurant chat opens; paste it (Ctrl+V) and send.')}</span>`;
  return head(L('ملف التأكيد جاهز','Confirmation PDF ready'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف التأكيد','Confirmation preview')}">`:`<div class="empty">${L('نجهز الملف…','Preparing the file…')}</div>`)+`
  <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L(`أرسل الملف إلى ${esc(o.name)} على <bdi>+973 ${esc(o.phone)}</bdi>`,`Send it to ${esc(o.name)} on +973 ${esc(o.phone)}`)}</p>
  <div class="pdf-acts">
@@ -2036,15 +2036,10 @@ function sPdf(id){
  <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('على الجوال تختار الواتساب ثم الزبون. على الكمبيوتر ينحفظ الملف وتنفتح محادثة الزبون، اسحب الملف فيها.','On a phone, pick WhatsApp then the customer. On a computer the file is saved and the chat opens; drag the file into it.')}</span>`;
 }
 function sendOrderNow(o){
+ const coarse=matchMedia('(pointer:coarse)').matches;
+ if(coarse){pdfOpen(o.id);return}   // phone: show the ready image + one share button (reliable, no paste)
  const p=makePdf(o),w=custWaLink(o);
- const canClip=!!(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem);
- if(!canClip&&navigator.canShare){
-  // no image clipboard here: fall back to the share sheet
-  p.then(r=>{if(navigator.canShare({files:[r.img]}))return navigator.share({files:[r.img],text:custWaText(o)}).then(()=>pdfOpen(o.id));throw 0}).catch(()=>pdfOpen(o.id));
-  return;
- }
- // copy the order image, then open the restaurant chat straight away
- try{if(canClip)navigator.clipboard.write([new ClipboardItem({'image/png':p.then(r=>new Promise(res=>r.cv.toBlob(res,'image/png')))})]).then(()=>toast(L('نسخنا صورة الطلب، الصقها في محادثة الواتساب وأرسل.','Order image copied. Paste it in the WhatsApp chat and send.'))).catch(()=>{})}catch(e){}
+ try{if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem)navigator.clipboard.write([new ClipboardItem({'image/png':p.then(r=>new Promise(res=>r.cv.toBlob(res,'image/png')))})]).then(()=>toast(L('نسخنا صورة الطلب، الصقها في محادثة الواتساب (Ctrl+V) وأرسل.','Order image copied. Paste it in the WhatsApp chat (Ctrl+V) and send.'))).catch(()=>{})}catch(e){}
  if(w)window.open(w,'_blank','noopener');
  pdfOpen(o.id);
 }
@@ -2197,7 +2192,7 @@ document.addEventListener('click',async e=>{
   case 'pdf-retry':{const o=store.orders.find(x=>x.id===id);if(o)pdfFail.delete(pdfKey(o));pdfOpen(id);break}
   case 'wa-new':{const o=store.orders.find(x=>x.id===id),w=o&&custWaLink(o);if(w)window.open(w,'_blank','noopener');break}
   case 'pdf-wa':{const o=store.orders.find(x=>x.id===id),r=o&&pdfCache.get(pdfKey(o));if(!o||!r)break;
-   if(navigator.canShare&&navigator.canShare({files:[r.img]})){try{await navigator.share({files:[r.img],text:custWaText(o)})}catch(err){}break}
+   if(matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[r.img]})){try{await navigator.share({files:[r.img]})}catch(err){if(err&&err.name!=='AbortError'){const w=custWaLink(o);if(w)window.open(w,'_blank','noopener')}}break}
    const w=custWaLink(o);let copied=false;
    try{if(navigator.clipboard&&window.ClipboardItem){navigator.clipboard.write([new ClipboardItem({'image/png':new Promise(res=>r.cv.toBlob(res,'image/png'))})]).then(()=>toast(L('نسخنا صورة الطلب، الصقها في محادثة الواتساب (Ctrl+V) وأرسل.','Order image copied. Paste it in the WhatsApp chat (Ctrl+V) and send.'))).catch(()=>{const a=document.createElement('a');a.href=URL.createObjectURL(r.img);a.download=`${id}.jpg`;document.body.appendChild(a);a.click();a.remove();toast(L('نزّلنا صورة الطلب، أرفقها في محادثة الواتساب وأرسل.','Order image downloaded. Attach it in the WhatsApp chat and send.'))});copied=true}}catch(err){}
    if(!copied){const a=document.createElement('a');a.href=URL.createObjectURL(r.img);a.download=`${id}.jpg`;document.body.appendChild(a);a.click();a.remove()}
