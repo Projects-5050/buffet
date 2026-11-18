@@ -1637,18 +1637,18 @@ const tomorrowISO=()=>{const d=new Date();d.setDate(d.getDate()+1);d.setMinutes(
 const fmtDate=iso=>{try{return new Date(iso+'T12:00').toLocaleDateString(lang==='en'?'en-GB':'ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long'})}catch(e){return iso}};
 const teaSel=()=>{const a=(store.teaSel||['f11']).filter(id=>byId(id));return a.length?[a[0]]:['f11']};
 const teaNames=(ids,en)=>(ids||[]).map(id=>{const m=byId(id);return m?(en?((MENU_EN[id]&&MENU_EN[id][0])||m.name):((m._ar&&m._ar[0])||m.name)):''}).filter(Boolean).join(en?' & ':' و');
-const BF_PER_DAY=2,BF_GAP=120,BF_OPEN=6,BF_CLOSE=23,BF_DEF_LEN=3,ORDER_WA='97366750818';
+const BF_PER_DAY=2,BF_GAP=90,BF_OPEN=6,BF_CLOSE=23,BF_DEF_LEN=3,ORDER_WA='97366750818';
 const tMin=t=>{const[h,m]=String(t||'0:0').split(':').map(Number);return h*60+(m||0)};
 const tStr=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
 function bfBooked(date){return store.orders.filter(o=>o.ev&&o.ev.date===date&&o.status!=='rejected'&&isBuffetOrder(o)).map(o=>{const a=tMin(o.ev.from);return{a,b:o.ev.to?tMin(o.ev.to):a+BF_DEF_LEN*60}})}
-function bfFits(date,a,b){const bk=bfBooked(date);if(bk.length>=BF_PER_DAY)return false;return bk.every(x=>a>=x.b+BF_GAP||b<=x.a-BF_GAP)}
+function bfFits(date,a){const bk=bfBooked(date);if(bk.length>=BF_PER_DAY)return false;return bk.every(x=>Math.abs(a-x.a)>=BF_GAP)}
 function slotHTML(e){
  if(!checkout.date)return `<p class="slot-note">${L('اختر التاريخ أولاً لتظهر الأوقات المتاحة.','Choose the date first to see the free times.')}</p>`;
  if(checkout.date<tomorrowISO())return `<p class="slot-note bad">${L('نستقبل حجز البوفية قبلها بيوم على الأقل، اختر من بكرة وطالع.','Buffets must be booked at least one day ahead. Choose tomorrow or later.')}</p>`;
  const bk=bfBooked(checkout.date);
  if(bk.length>=BF_PER_DAY)return `<p class="slot-note bad">${L('هذا اليوم محجوز بالكامل، اختر يوماً آخر.','This day is fully booked. Choose another day.')}</p>`;
- const starts=[];for(let h=BF_OPEN;h<=BF_CLOSE-1;h++)starts.push(h*60);
- const chips=starts.map(a=>{const ok=bfFits(checkout.date,a,a+BF_DEF_LEN*60),on=checkout.from&&tMin(checkout.from)===a;return `<button type="button" class="slot-chip${on?' on':''}" data-act="slot" data-v="${tStr(a)}" ${ok?'':'disabled'} aria-pressed="${on}">${ok?'':ic('lock',13)}<bdi>${fmtTime(tStr(a))}</bdi></button>`}).join('');
+ const starts=[];for(let m=BF_OPEN*60;m<=(BF_CLOSE-1)*60;m+=30)starts.push(m);
+ const chips=starts.map(a=>{const ok=bfFits(checkout.date,a),on=checkout.from&&tMin(checkout.from)===a;return `<button type="button" class="slot-chip${on?' on':''}" data-act="slot" data-v="${tStr(a)}" ${ok?'':'disabled'} aria-pressed="${on}">${ok?'':ic('lock',13)}<bdi>${fmtTime(tStr(a))}</bdi></button>`}).join('');
  const ends='';
  return `<div class="field"><label>${L('وقت البوفية','Buffet time')}</label><div class="slots" role="group">${chips}</div>${e.from?`<span class="err">${e.from}</span>`:''}${bk.length?`<p class="slot-note">${L('باقي حجز واحد في هذا اليوم. الأوقات المقفلة محجوزة أو قريبة من حجز آخر.','One booking left on this day. Locked times are booked or too close to another booking.')}</p>`:''}</div>${ends}`;
 }
