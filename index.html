@@ -1652,7 +1652,7 @@ function slotHTML(e){
  let ends='';
  if(checkout.from){const a=tMin(checkout.from),opts=[];for(let b=a+60;b<=Math.min(a+6*60,BF_CLOSE*60);b+=60)if(bfFits(checkout.date,a,b))opts.push(b);
   ends=`<div class="field" style="margin-top:12px"><label for="c-to">${L('ينتهي الساعة','Ends at')}</label><select class="input${e.to?' bad':''}" id="c-to">${opts.map(b=>`<option value="${tStr(b)}" ${checkout.to===tStr(b)?'selected':''}>${fmtTime(tStr(b))} · ${L(['','ساعة','ساعتان','3 ساعات','4 ساعات','5 ساعات','6 ساعات'][(b-a)/60],`${(b-a)/60} h`)}</option>`).join('')}</select>${e.to?`<span class="err">${e.to}</span>`:''}</div>`}
- return `<div class="field"><label>${L('وقت البداية','Start time')}</label><div class="slots" role="group">${chips}</div>${e.from?`<span class="err">${e.from}</span>`:''}<p class="slot-note">${bk.length?L(`باقي حجز واحد في هذا اليوم. الأوقات المقفلة محجوزة أو قريبة من حجز آخر.`,`One booking left on this day. Locked times are booked or too close to another booking.`):L(`نستقبل ${BF_PER_DAY} بوفية في اليوم، بينهما ساعتان على الأقل.`,`We take ${BF_PER_DAY} buffets a day, at least two hours apart.`)}</p></div>${ends}`;
+ return `<div class="field"><label>${L('وقت البداية','Start time')}</label><div class="slots" role="group">${chips}</div>${e.from?`<span class="err">${e.from}</span>`:''}${bk.length?`<p class="slot-note">${L('باقي حجز واحد في هذا اليوم. الأوقات المقفلة محجوزة أو قريبة من حجز آخر.','One booking left on this day. Locked times are booked or too close to another booking.')}</p>`:''}</div>${ends}`;
 }
 const fmtTime=t=>{if(!t)return '';const[h,m]=t.split(':').map(Number);const pm=h>=12,hh=((h+11)%12)+1;return `${hh}:${String(m).padStart(2,'0')} ${pm?L('م','pm'):L('ص','am')}`};
 function sCart(){
