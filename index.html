@@ -1906,54 +1906,80 @@ function lbShow(i){const all=galleryAll();if(!all.length)return;{const lb=$('#lb
 
 /* ---------------- order confirmation PDF ---------------- */
 const pdfCache=new Map(),pdfFail=new Set();
-function loadJS(src){return new Promise((res,rej)=>{if(document.querySelector(`script[src="${src}"]`)){const t=setInterval(()=>{if(window.html2canvas&&window.jspdf){clearInterval(t);res()}},50);setTimeout(()=>{clearInterval(t);res()},8000);return}const el=document.createElement('script');el.src=src;el.onload=res;el.onerror=rej;document.head.appendChild(el)})}
-async function pdfLibs(){if(!window.html2canvas)await loadJS('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');if(!window.jspdf)await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')}
 function noteDishes(note){const first=(note||'').split(' · ')[0];if(!/^(الأطباق|Dishes)\s*:/.test(first))return [];return first.replace(/^(الأطباق|Dishes)\s*:\s*/,'').split(/\s*[،,]\s*/).filter(Boolean)}
 function dishImg(n){const k=String(n).replace(/\s*×\d+$/,'').trim();const m=MENU.find(x=>x.name===k||x.en===k||x.name_en===k);return m&&m.img?m.img:''}
-function pdfHTML(o){
- const ar=x=>esc(x),bf=bfLines(o),nw=o.status==='review',dishes=[];
- bf.forEach(l=>noteDishes(l.note).forEach(d=>dishes.push(d)));
+const pdfKey=o=>o.id+(o.status==='review'?':new':':ok');
+function pdfImg(src){return new Promise(r=>{if(!src)return r(null);const im=new Image();im.onload=()=>r(im);im.onerror=()=>r(null);im.src=src})}
+function rr(x,c,X,Y,W,H,R){x.beginPath();x.moveTo(X+R,Y);x.arcTo(X+W,Y,X+W,Y+H,R);x.arcTo(X+W,Y+H,X,Y+H,R);x.arcTo(X,Y+H,X,Y,R);x.arcTo(X,Y,X+W,Y,R);x.closePath();if(c){x.fillStyle=c;x.fill()}}
+function fitTxt(x,t,w){t=String(t||'');if(x.measureText(t).width<=w)return t;while(t.length>1&&x.measureText(t+'…').width>w)t=t.slice(0,-1);return t+'…'}
+function wrap2(x,t,w){const ws=String(t||'').split(/\s+/);const ln=[''];ws.forEach(q=>{const c=ln[ln.length-1];const n=c?c+' '+q:q;if(x.measureText(n).width<=w||!c)ln[ln.length-1]=n;else ln.push(q)});if(ln.length>2){ln.length=2;ln[1]=fitTxt(x,ln[1]+' …',w)}return ln}
+async function drawCard(o){
+ const W=1240,H=1754,F='"IBM Plex Sans Arabic",Tahoma,"Geeza Pro","Arial",sans-serif';
+ try{if(document.fonts){await Promise.all(['400','600','700'].map(w=>document.fonts.load(`${w} 30px "IBM Plex Sans Arabic"`,'بيض')));}}catch(e){}
+ const cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+ x.direction='rtl';x.textBaseline='alphabetic';
+ const f=(wt,sz)=>{x.font=`${wt} ${sz}px ${F}`};
+ const T=(t,X,Y,al,col)=>{x.textAlign=al||'right';x.fillStyle=col||'#2D2D35';x.fillText(t,X,Y)};
+ const bf=bfLines(o),nw=o.status==='review',dishes=[];bf.forEach(l=>noteDishes(l.note).forEach(d=>dishes.push(d)));
  const other=o.items.filter(l=>{const m=byId(l.id);return m&&!m.buffet});
  const extra=bf.map(l=>(l.note||'').split(' · ').slice(1).join(' · ')).filter(Boolean).join(' · ');
  const P=bf[0]?byId(bf[0].id):null,ppl=bf.reduce((s,l)=>s+l.qty,0),tot=bf.reduce((s,l)=>s+l.qty*priceOf(l.id),0);
- const d=new Date(o.at).toLocaleDateString('ar-BH-u-nu-latn',{day:'numeric',month:'long',year:'numeric'});
+ const dt=new Date(o.at).toLocaleDateString('ar-BH-u-nu-latn',{day:'numeric',month:'long',year:'numeric'});
  const evD=o.ev?new Date(o.ev.date+'T12:00').toLocaleDateString('ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long'}):'—';
  const evT=o.ev?`${fmtTime(o.ev.from)}${o.ev.to?' – '+fmtTime(o.ev.to):''}`:'';
- const tile=n=>{const im=dishImg(n);return `<div class="pb-d"><div class="pb-im"${im?` style="background-image:url('${im}')"`:''}>${im?'':ar(n.slice(0,1))}</div><div class="pb-dn">${ar(n)}</div></div>`};
- return `<div class="pv pb">
-  <div class="pb-hero">
-   <div><b>${nw?(P?'طلب بوفية جديد':'طلب جديد'):'طلبك مؤكد'}</b><span>رقم الطلب <bdi>${ar(o.id)}</bdi> · ${d}</span>
-    <div class="pb-ok">${nw?'بانتظار تأكيد الفرع':'✓ تم القبول من الفرع'}</div></div>
-   <div class="pb-logo"><img src="img/fba-logo.png" alt=""></div>
-  </div>
-  <div class="pb-body">
-   <div class="pb-chips">
-    <div><small>الاسم</small><b>${ar(o.name)}</b></div>
-    <div><small>الهاتف</small><b><bdi>+973 ${ar(o.phone)}</bdi></b></div>
-    <div><small>${P?'موعد البوفية':'الموعد'}</small><b>${ar(evD)}${evT?` · <bdi>${ar(evT)}</bdi>`:''}</b></div>
-    <div><small>${o.type==='delivery'?'عنوان التوصيل':'الاستلام'}</small><b>${o.type==='delivery'?ar(o.address):ar(branchName(o.branch))}</b></div>
-   </div>
-   ${dishes.length?`<div class="pb-h">الأطباق المختارة <span>${dishes.length}</span></div><div class="pb-grid">${dishes.map(tile).join('')}</div>`:''}
-   ${other.length?`<div class="pb-h">أصناف إضافية</div><div class="pb-other">${other.map(l=>`<span>${l.qty} × ${ar(byId(l.id).name)}${l.note?` (${ar(l.note)})`:''}</span>`).join('')}</div>`:''}
-   ${extra?`<div class="pb-note">ملاحظة: ${ar(extra)}</div>`:''}
-   ${P?`<div class="pb-sum"><div><small>${ar(P.name)} · ${ppl} شخص × ${bhd(priceOf(P.id))} د.ب</small>الإجمالي</div><b>${bhd(tot)} <em>د.ب</em></b></div>`:'<div style="margin-top:auto"></div>'}
-   <div class="pv-foot">شكراً لاختياركم فريج بن عاقول · أصالة الماضي، بإبداع الحاضر</div>
-  </div>
- </div>`;
+ const M=80,R=W-M;
+ x.fillStyle='#fff';x.fillRect(0,0,W,H);
+ // hero
+ x.fillStyle='#239298';x.fillRect(0,0,W,330);
+ f(700,64);T(nw?(P?'طلب بوفية جديد':'طلب جديد'):'طلبك مؤكد',R,140,'right','#fff');
+ f(400,28);T(`رقم الطلب \u2066${o.id}\u2069 · ${dt}`,R,192,'right','rgba(255,255,255,.92)');
+ f(700,26);const st=nw?'بانتظار تأكيد الفرع':'✓ تم القبول من الفرع';const sw=x.measureText(st).width+48;
+ rr(x,'#fff',R-sw,222,sw,54,27);T(st,R-24,258,'right','#17666a');
+ const logo=await pdfImg('img/fba-logo.png');x.beginPath();x.arc(M+115,165,115,0,Math.PI*2);x.fillStyle='#fff';x.fill();
+ if(logo){const lw=180,lh=lw*logo.height/logo.width;x.drawImage(logo,M+115-lw/2,165-lh/2,lw,lh)}
+ // chips
+ let y=380;const cw=(W-2*M-20)/2,ch=104;
+ const chips=[['الاسم',o.name],['الهاتف','\u2066+973 '+o.phone+'\u2069'],[P?'موعد البوفية':'الموعد',evD+(evT?' · \u2067'+evT+'\u2069':'')],[o.type==='delivery'?'عنوان التوصيل':'الاستلام',o.type==='delivery'?o.address:branchName(o.branch)]];
+ chips.forEach((c,i)=>{const cx=R-(i%2)*(cw+20),cy=y+Math.floor(i/2)*(ch+18);rr(x,'#f2f5f5',cx-cw,cy,cw,ch,22);f(400,22);T(c[0],cx-24,cy+38,'right','#5d6266');f(600,28);T(fitTxt(x,c[1],cw-48),cx-24,cy+80)});
+ y+=2*ch+18+50;
+ // dishes
+ if(dishes.length){f(700,32);T('الأطباق المختارة',R,y,'right','#17666a');const hw=x.measureText('الأطباق المختارة').width;f(700,22);const ns=String(dishes.length),nwd=x.measureText(ns).width+28;rr(x,'#239298',R-hw-16-nwd,y-28,nwd,36,18);T(ns,R-hw-16-nwd/2,y-3,'center','#fff');
+  y+=26;const cols=4,g=20,tw=(W-2*M-g*(cols-1))/cols,th=tw*0.78;
+  const ims=await Promise.all(dishes.map(d=>pdfImg(dishImg(d))));
+  dishes.forEach((d,i)=>{const c=i%cols,r=Math.floor(i/cols),tx=R-(c+1)*tw-c*g,ty=y+r*(th+92);
+   x.save();rr(x,'#e8eeee',tx,ty,tw,th,22);x.clip();const im=ims[i];
+   if(im){const k=Math.max(tw/im.width,th/im.height),iw=im.width*k,ih=im.height*k;x.drawImage(im,tx+(tw-iw)/2,ty+(th-ih)/2,iw,ih)}else{f(700,70);T(d.trim().charAt(0),tx+tw/2,ty+th/2+25,'center','#239298')}
+   x.restore();f(600,23);wrap2(x,d,tw-8).forEach((ln,j)=>T(ln,tx+tw/2,ty+th+34+j*30,'center'))});
+  y+=Math.ceil(dishes.length/cols)*(th+92)+20}
+ if(other.length){f(700,28);T('أصناف إضافية',R,y,'right','#17666a');y+=44;f(400,24);other.forEach(l=>{T(fitTxt(x,`${l.qty} × ${byId(l.id).name}${l.note?' ('+l.note+')':''}`,W-2*M),R,y);y+=36});y+=10}
+ if(extra){f(400,24);T(fitTxt(x,'ملاحظة: '+extra,W-2*M),R,y,'right','#5d6266');y+=40}
+ // sum bar
+ const fy=H-80;
+ if(P){const by=fy-190,bh=140;rr(x,'#2D2D35',M,by,W-2*M,bh,32);f(400,24);T(`${P.name} · ${ppl} شخص × ${bhd(priceOf(P.id))} د.ب`,R-36,by+56,'right','rgba(255,255,255,.75)');f(600,32);T('الإجمالي',R-36,by+104,'right','#fff');
+  x.direction='ltr';f(700,58);T(bhd(tot),M+36+x.measureText(' د.ب').width+18,by+100,'left','#fff');f(500,28);x.direction='rtl';T('د.ب',M+36,by+100,'left','rgba(255,255,255,.8)')}
+ f(400,22);T('شكراً لاختياركم فريج بن عاقول · أصالة الماضي، بإبداع الحاضر',W/2,fy,'center','#7b8185');
+ return cv;
 }
-const pdfKey=o=>o.id+(o.status==='review'?':new':':ok');
+function jpegPdf(jpgBytes,pw,ph){
+ const enc=new TextEncoder(),parts=[],offs=[];let len=0;const push=b=>{parts.push(b);len+=b.length};const str=t=>push(enc.encode(t));
+ str('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+ const obj=(n,body,stream)=>{offs[n]=len;str(`${n} 0 obj\n${body}\n`);if(stream){str('stream\n');push(stream);str('\nendstream\n')}str('endobj\n')};
+ const Wp=595.28,Hp=841.89,cs=enc.encode(`q ${Wp} 0 0 ${Hp} 0 0 cm /Im0 Do Q`);
+ obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+ obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+ obj(3,`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${Wp} ${Hp}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`);
+ obj(4,`<< /Type /XObject /Subtype /Image /Width ${pw} /Height ${ph} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpgBytes.length} >>`,jpgBytes);
+ obj(5,`<< /Length ${cs.length} >>`,cs);
+ const xr=len;let t='xref\n0 6\n0000000000 65535 f \n';for(let i=1;i<=5;i++)t+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
+ str(t+`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xr}\n%%EOF`);
+ return new Blob(parts,{type:'application/pdf'});
+}
 async function makePdf(o){
  if(pdfCache.has(pdfKey(o)))return pdfCache.get(pdfKey(o));
- await pdfLibs();
- let st=$('#pdf-stage');if(!st){st=document.createElement('div');st.id='pdf-stage';document.body.appendChild(st)}
- st.innerHTML=pdfHTML(o);const el=st.firstElementChild;
- await Promise.all([...el.querySelectorAll('img')].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r})));
- if(document.fonts&&document.fonts.ready)await document.fonts.ready;
- const cv=await window.html2canvas(el,{scale:2,backgroundColor:'#fff',useCORS:true,logging:false});
- st.innerHTML='';
- const img=cv.toDataURL('image/jpeg',.9);
- const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4',compress:true});doc.addImage(img,'JPEG',0,0,210,297);
- const blob=doc.output('blob'),file=new File([blob],`${o.id}.pdf`,{type:'application/pdf'});
+ const cv=await drawCard(o);
+ const jb=await new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('jpeg')),'image/jpeg',.9));
+ const bytes=new Uint8Array(await jb.arrayBuffer());
+ const blob=jpegPdf(bytes,cv.width,cv.height),file=new File([blob],`${o.id}.pdf`,{type:'application/pdf'});
  const r={blob,file,url:URL.createObjectURL(blob),thumb:cv.toDataURL('image/jpeg',.6)};pdfCache.set(pdfKey(o),r);return r;
 }
 const isNewO=o=>o.status==='review';
@@ -1984,7 +2010,11 @@ async function pdfOpen(id){
  try{await makePdf(o);if(sheetKind==='pdf'&&sheetArg===id)renderSheet()}
  catch(e){toast(L('ما قدرنا نجهز الملف. تأكد من الاتصال بالإنترنت وحاول مرة ثانية.','Could not build the PDF. Check the internet connection and try again.'));if(!isNewO(o))closeSheet();else{pdfFail.add(pdfKey(o));if(sheetKind==='pdf'&&sheetArg===id)renderSheet()}}
 }
-function pdfDownload(r,id){const a=document.createElement('a');a.href=r.url;a.download=`${id}.pdf`;document.body.appendChild(a);a.click();a.remove()}
+let dlCap;try{window.claude&&window.claude.use&&window.claude.use('downloads').then(d=>{dlCap=d}).catch(()=>{})}catch(e){}
+async function pdfDownload(r,id){
+ if(dlCap){try{await dlCap.save({filename:`${id}.pdf`,data:r.blob});return}catch(e){if(e&&e.code==='declined')return}}
+ const a=document.createElement('a');a.href=r.url;a.download=`${id}.pdf`;a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+}
 function renderBoard(){
  const el=$('#v-board');
  if(!unlocked){
