@@ -1025,6 +1025,9 @@ button.slot.vacant{font:inherit;color:inherit;padding:0;border:0;cursor:pointer;
 button.slot.vacant:active{transform:scale(.95)}
 button.slot.vacant:focus-visible{outline:3px solid rgba(35,146,152,.45);outline-offset:2px}
 html:not(.bf-mode) .bf-only,html:not(.bf-mode) #sec-bread{display:none!important}
+#v-menu .card .incl-chip,.incl-chip{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;background:#239298;color:#fff;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}
+#v-menu .card .c-body:has(.incl-chip){padding-inline-end:12px}
+#v-menu .card .c-body:has(.incl-chip) .c-foot{position:static;translate:none;margin-top:6px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -1271,7 +1274,7 @@ const MENU=[
  {id:'w2',b:'fareeq',cat:'sweets',name:'لقيمات',desc:'لقيمات مقرمشة بالدبس والسمسم.',price:1.0,hue:'#e0962e',img:'img/w-luqaimat.jpg',hot:1},
  {id:'x1',b:'fareeq',cat:'boxes',name:'بوكس العائلة الصغير',desc:'اختر أي 3 أطباق من المنيو في بوكس واحد.',pick:3,price:3.5,hue:'#c9a06a',img:'img/x-box3.jpg'},
  {id:'x2',b:'fareeq',cat:'boxes',name:'بوكس العائلة الكبير',desc:'اختر أي 6 أطباق من المنيو مع الخبز.',pick:6,price:6.5,hue:'#c9a06a',img:'img/x-box6.jpg',hot:1},
- {id:'f11',b:'fareeq',cat:'drinks',name:'شاي كرك',desc:'كرك بالحليب والهيل.',price:.3,hue:'#c47a35',img:'img/d-karak-thermos.jpg',fit:1,hot:1},
+ {id:'f11',b:'fareeq',cat:'drinks',name:'شاي كرك',desc:'كرك بالحليب والهيل.',price:.3,hue:'#c47a35',img:'img/d-karak-thermos.jpg',included:1,fit:1,hot:1},
  {id:'d2',b:'fareeq',cat:'drinks',name:'شاي أحمر',desc:'شاي أحمر بالهيل.',price:.2,hue:'#b8461e',img:'img/d-tea-red-c.jpg',fit:1},
  {id:'d3',b:'fareeq',cat:'drinks',name:'زعفران',desc:'مشروب الزعفران.',price:.4,hue:'#f2b233',img:'img/d-saffron.jpg'},
  {id:'d4',b:'fareeq',cat:'drinks',name:'ورد',desc:'مشروب الورد.',price:.4,hue:'#f2a0b8',img:'img/d-rose.jpg'},
@@ -1358,7 +1361,7 @@ function seedStore(){
  ];
  return {v:1,seq:1038,settings:{holder:'مطعم فريج بن عاقول',bank:'اسم البنك',iban:'BH67BMAG00001299123456',benefit:'33000000',fee:.5,pin:'1234',apin:'4321',sample:true,wa:{all:''}},buffet:seedBuffet(),menuEdits:{},orders:orders.filter(o=>o.items.every(l=>byId(l.id))),mine:[],profile:{name:'',phone:'',branch:''},carts:{fareeq:[],buns:[]}};
 }
-function loadStore(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.v===1){if(s.settings&&s.settings.holder==='مطعم فريق بن عاقول')s.settings.holder='مطعم فريج بن عاقول';['fareeq','buns'].forEach(b=>s.carts[b]=(s.carts[b]||[]).filter(l=>byId(l.id)));s.orders=s.orders.filter(o=>o.items.every(l=>byId(l.id)));if(!Array.isArray(s.buffet))s.buffet=seedBuffet();s.buffet=s.buffet.filter(x=>!REMOVED.some(r=>x.id==='bi-'+r));['s6','s7'].forEach(id=>{const m=MENU.find(z=>z.id===id);if(m&&!s.buffet.some(x=>x.id==='bi-'+id))s.buffet.push({id:'bi-'+id,name:m._ar?m._ar[0]:m.name})});s.buffet.forEach(x=>{if(x.id==='bi-m9'&&x.name==='صالونة دجاج')x.name='ناشف دجاج';if(x.id==='bi-w1'&&x.name==='فطيطة')x.name='فتيتة'});if(!s.settings.wa)s.settings.wa={all:''};if(!s.settings.apin)s.settings.apin='4321';if(!Array.isArray(s.gallery))s.gallery=[];return s}}catch(e){}return seedStore()}
+function loadStore(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.v===1){if(s.settings&&s.settings.holder==='مطعم فريق بن عاقول')s.settings.holder='مطعم فريج بن عاقول';['fareeq','buns'].forEach(b=>s.carts[b]=(s.carts[b]||[]).filter(l=>byId(l.id)&&!byId(l.id).included));s.orders=s.orders.filter(o=>o.items.every(l=>byId(l.id)));if(!Array.isArray(s.buffet))s.buffet=seedBuffet();s.buffet=s.buffet.filter(x=>!REMOVED.some(r=>x.id==='bi-'+r));['s6','s7'].forEach(id=>{const m=MENU.find(z=>z.id===id);if(m&&!s.buffet.some(x=>x.id==='bi-'+id))s.buffet.push({id:'bi-'+id,name:m._ar?m._ar[0]:m.name})});s.buffet.forEach(x=>{if(x.id==='bi-m9'&&x.name==='صالونة دجاج')x.name='ناشف دجاج';if(x.id==='bi-w1'&&x.name==='فطيطة')x.name='فتيتة'});if(!s.settings.wa)s.settings.wa={all:''};if(!s.settings.apin)s.settings.apin='4321';if(!Array.isArray(s.gallery))s.gallery=[];return s}}catch(e){}return seedStore()}
 let store=loadStore();
 function save(){
  for(let tries=0;tries<3;tries++){
@@ -1483,10 +1486,10 @@ function cardHTML(m,wide){
  const q=qtyOf(m.id),av=isAvail(m.id);
  return `<article class="card${wide?' wide':''}${av?'':' soldout'}${bfOn(m)?' bf-on':''}" data-id="${m.id}">${bfOn(m)?`<span class="bf-badge" aria-hidden="true">${ic('check',20)}</span>`:''}
   ${m.hot&&av?'<span class="tag-hot">'+L('الأكثر طلباً','Popular')+'</span>':''}
-  <button class="art-btn" data-act="item" data-id="${m.id}" aria-label="${L('تفاصيل','Details:')} ${esc(m.name)}">${artBox(m)}</button>
+  ${m.included?`<div class="art-btn" role="img" aria-label="${esc(m.name)}">${artBox(m)}</div>`:`<button class="art-btn" data-act="item" data-id="${m.id}" aria-label="${L('تفاصيل','Details:')} ${esc(m.name)}">${artBox(m)}</button>`}
   <div class="c-body"><span class="c-name">${esc(m.name)}</span><span class="c-desc">${esc(m.desc)}</span>
    <div class="c-foot">${m.buffet?`<span class="price num">${bhd(priceOf(m.id))}<small>${CUR()}</small></span>`:'<span></span>'}
-   ${bfBuild&&bfEntry(m)&&av?`<button class="add bf-pick${bfOn(m)?' on':''}" data-act="add" data-id="${m.id}" aria-pressed="${!!bfOn(m)}" aria-label="${bfOn(m)?L('إزالة من البوفية','Remove from buffet'):L('أضف للبوفية','Add to buffet')} ${esc(m.name)}">${ic(bfOn(m)?'check':'plus',20)}</button>`:!av?'<span class="soldout-chip">'+L('نفد اليوم','Sold out today')+'</span>':(m.sizes||m.pick)?`<button class="add" data-act="item" data-id="${m.id}" aria-label="${m.pick?L('اختر أطباق','Choose dishes'):L('اختر حجم','Choose size')} ${esc(m.name)}">${ic('plus',20)}${q?`<span class="add-n num">${q}</span>`:''}</button>`:q?stepper(m.id,q):`<button class="add" data-act="add" data-id="${m.id}" aria-label="${L('أضف','Add')} ${esc(m.name)}">${ic('plus',20)}</button>`}
+   ${m.included?`<span class="incl-chip">${ic('check',14)}${L('مع كل طلب','With every order')}</span>`:bfBuild&&bfEntry(m)&&av?`<button class="add bf-pick${bfOn(m)?' on':''}" data-act="add" data-id="${m.id}" aria-pressed="${!!bfOn(m)}" aria-label="${bfOn(m)?L('إزالة من البوفية','Remove from buffet'):L('أضف للبوفية','Add to buffet')} ${esc(m.name)}">${ic(bfOn(m)?'check':'plus',20)}</button>`:!av?'<span class="soldout-chip">'+L('نفد اليوم','Sold out today')+'</span>':(m.sizes||m.pick)?`<button class="add" data-act="item" data-id="${m.id}" aria-label="${m.pick?L('اختر أطباق','Choose dishes'):L('اختر حجم','Choose size')} ${esc(m.name)}">${ic('plus',20)}${q?`<span class="add-n num">${q}</span>`:''}</button>`:q?stepper(m.id,q):`<button class="add" data-act="add" data-id="${m.id}" aria-label="${L('أضف','Add')} ${esc(m.name)}">${ic('plus',20)}</button>`}
    </div></div></article>`;
 }
 const stepper=(id,q,lg)=>`<span class="stepper${lg?' lg':''}"><button data-act="inc" data-id="${id}" aria-label="${L('زيادة','Increase')}">${ic('plus',16)}</button><span class="n num">${q}</span><button data-act="dec" data-id="${id}" aria-label="${L('إنقاص','Decrease')}">${ic('minus',16)}</button></span>`;
@@ -1958,6 +1961,7 @@ async function drawCard(o){
    if(im){const k=Math.max(tw/im.width,th/im.height),iw=im.width*k,ih=im.height*k;x.drawImage(im,tx+(tw-iw)/2,ty+(th-ih)/2,iw,ih)}else{f(700,70);T(d.trim().charAt(0).toUpperCase(),tx+tw/2,ty+th/2+25,'center','#239298')}
    x.restore();f(600,23);wrap2(x,d,tw-8).forEach((ln,j)=>T(ln,tx+tw/2,ty+th+34+j*30,'center'))});
   y+=Math.ceil(dishes.length/cols)*(th+92)+20}
+ if(P){f(600,26);T(t('يشمل مع الطلب: شاي كرك','Included with the order: Karak tea'),S,y,AL,'#17666a');y+=46}
  if(other.length){f(700,28);T(t('أصناف إضافية','Extra items'),S,y,AL,'#17666a');y+=44;f(400,24);other.forEach(l=>{T(fitTxt(x,`${l.qty} × ${nm(byId(l.id))}${l.note?' ('+l.note+')':''}`,W-2*M),S,y);y+=36});y+=10}
  if(extra){f(400,24);T(fitTxt(x,t('ملاحظة: ','Note: ')+extra,W-2*M),S,y,AL,'#5d6266');y+=40}
  // sum bar
