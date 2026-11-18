@@ -1677,7 +1677,7 @@ function sCart(){
     ${checkout.loc&&/^https?:/.test(checkout.loc)?`<a class="hint" href="${esc(checkout.loc)}" target="_blank" rel="noopener" style="color:var(--orange-ink);font-weight:600">${L('عرض الموقع على الخريطة','View on the map')}</a>`:''}
     ${e.loc?`<span class="err">${e.loc}</span>`:''}</div>
   </div>`:''}
-  <div class="sh-foot"><button class="btn btn-main btn-block" data-act="to-pay">${L('أرسل الطلب','Place order')}</button><span class="hint" style="text-align:center">${B.ar}</span></div>`;
+  <div class="sh-foot"><button class="btn btn-main btn-block" data-act="to-pay">${L('أرسل الطلب','Place order')}</button><span class="hint" style="text-align:center">${cartHasBf()?L('بتنفتح محادثة المطعم على الواتساب وصورة الطلب منسوخة، الصقها وأرسل.','The restaurant WhatsApp chat opens with the order image copied; paste it and send.'):B.ar}</span></div>`;
 }
 function readCartForm(){
  const n=$('#c-name'),ph=$('#c-phone'),ad=$('#c-addr');
@@ -2036,15 +2036,15 @@ function sPdf(id){
  <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('على الجوال تختار الواتساب ثم الزبون. على الكمبيوتر ينحفظ الملف وتنفتح محادثة الزبون، اسحب الملف فيها.','On a phone, pick WhatsApp then the customer. On a computer the file is saved and the chat opens; drag the file into it.')}</span>`;
 }
 function sendOrderNow(o){
- const coarse=matchMedia('(pointer:coarse)').matches,p=makePdf(o);
- if(coarse&&navigator.canShare){
-  // phone: share the image straight into WhatsApp
+ const p=makePdf(o),w=custWaLink(o);
+ const canClip=!!(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem);
+ if(!canClip&&navigator.canShare){
+  // no image clipboard here: fall back to the share sheet
   p.then(r=>{if(navigator.canShare({files:[r.img]}))return navigator.share({files:[r.img],text:custWaText(o)}).then(()=>pdfOpen(o.id));throw 0}).catch(()=>pdfOpen(o.id));
   return;
  }
- // computer: copy the image and open the restaurant chat right away
- const w=custWaLink(o);
- try{if(navigator.clipboard&&window.ClipboardItem){navigator.clipboard.write([new ClipboardItem({'image/png':p.then(r=>new Promise(res=>r.cv.toBlob(res,'image/png')))})]).then(()=>toast(L('نسخنا صورة الطلب، الصقها في محادثة الواتساب (Ctrl+V) وأرسل.','Order image copied. Paste it in the WhatsApp chat (Ctrl+V) and send.'))).catch(()=>{})}}catch(e){}
+ // copy the order image, then open the restaurant chat straight away
+ try{if(canClip)navigator.clipboard.write([new ClipboardItem({'image/png':p.then(r=>new Promise(res=>r.cv.toBlob(res,'image/png')))})]).then(()=>toast(L('نسخنا صورة الطلب، الصقها في محادثة الواتساب وأرسل.','Order image copied. Paste it in the WhatsApp chat and send.'))).catch(()=>{})}catch(e){}
  if(w)window.open(w,'_blank','noopener');
  pdfOpen(o.id);
 }
