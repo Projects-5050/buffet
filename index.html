@@ -1028,6 +1028,8 @@ html:not(.bf-mode) .bf-only,html:not(.bf-mode) #sec-bread{display:none!important
 #v-menu .card .incl-chip,.incl-chip{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;background:#239298;color:#fff;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}
 #v-menu .card .c-body:has(.incl-chip){padding-inline-end:12px}
 #v-menu .card .c-body:has(.incl-chip) .c-foot{position:static;translate:none;margin-top:6px}
+h2.bf-h{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
+.bf-incl{font-size:13.5px;font-weight:600;color:#17666a;letter-spacing:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -1457,7 +1459,7 @@ function renderMenu(){
  const secs=B.cats.map(([cid,cname])=>{
   const list=items.filter(m=>m.cat===cid);
   const lead=first;first=false;const rest=list.length-(lead?1:0);
-  if(cid==='buffet')return `<section class="m-sec" id="sec-${cid}" data-cat="${cid}"><h2>${cname}</h2><div class="ios-group">${list.map(m=>{const av=isAvail(m.id);return `<button class="ios-row" data-act="item" data-id="${m.id}"${av?'':' disabled'}><span class="ios-n num">${m.pick}</span><span class="ios-t"><b>${esc(m.name)}</b><small>${av?L(`${m.pick} أطباق · من ${BF_MIN} شخص`,`${m.pick} dishes · from ${BF_MIN} people`):L('غير متوفرة اليوم','Not available today')}${m.hot&&av?` · <em class="ios-hot">${L('الأكثر طلباً','Popular')}</em>`:''}</small></span><span class="ios-p num">${bhd(priceOf(m.id))} ${CUR()}<small>${L('للشخص','per person')}</small></span><span class="ios-chev">${ic('chev',16)}</span></button>`}).join('')}</div>${galleryAll().length?`<a class="folder" href="#buffets" aria-label="${L('بوفيتنا','Our buffets')}: ${galleryAll().length} ${L('صورة','photos')}"><span class="f-tab"></span><span class="f-body"><span class="f-pics">${galleryAll().slice(0,3).map((g,i)=>`<img src="${g.src}" alt="" loading="lazy" style="--i:${i}">`).join('')}</span><span class="f-txt"><b>${L('بوفيتنا','Our buffets')}</b><small class="num">${galleryAll().length} ${L('صورة','photos')}</small></span><span class="f-open">${ic('chev',18)}</span></span></a>`:''}</section>`;
+  if(cid==='buffet')return `<section class="m-sec" id="sec-${cid}" data-cat="${cid}"><h2 class="bf-h">${cname}<span class="bf-incl">${L('السعر يشمل معدات البوفية والخبز والشاي مجاناً','Price includes buffet equipment, bread and tea for free')}</span></h2><div class="ios-group">${list.map(m=>{const av=isAvail(m.id);return `<button class="ios-row" data-act="item" data-id="${m.id}"${av?'':' disabled'}><span class="ios-n num">${m.pick}</span><span class="ios-t"><b>${esc(m.name)}</b><small>${av?L(`${m.pick} أطباق · من ${BF_MIN} شخص`,`${m.pick} dishes · from ${BF_MIN} people`):L('غير متوفرة اليوم','Not available today')}${m.hot&&av?` · <em class="ios-hot">${L('الأكثر طلباً','Popular')}</em>`:''}</small></span><span class="ios-p num">${bhd(priceOf(m.id))} ${CUR()}<small>${L('للشخص','per person')}</small></span><span class="ios-chev">${ic('chev',16)}</span></button>`}).join('')}</div>${galleryAll().length?`<a class="folder" href="#buffets" aria-label="${L('بوفيتنا','Our buffets')}: ${galleryAll().length} ${L('صورة','photos')}"><span class="f-tab"></span><span class="f-body"><span class="f-pics">${galleryAll().slice(0,3).map((g,i)=>`<img src="${g.src}" alt="" loading="lazy" style="--i:${i}">`).join('')}</span><span class="f-txt"><b>${L('بوفيتنا','Our buffets')}</b><small class="num">${galleryAll().length} ${L('صورة','photos')}</small></span><span class="f-open">${ic('chev',18)}</span></span></a>`:''}</section>`;
   return `<section class="m-sec" id="sec-${cid}" data-cat="${cid}"><h2>${cname}<small>${lang==='en'?list.length+(list.length===1?' item':' items'):list.length>2?list.length+' أصناف':list.length===2?'صنفان':'صنف واحد'}</small></h2><div class="grid">${list.map((m,i)=>cardHTML(m,(lead&&i===0))).join('')}</div></section>`;
  }).join('');
  $('#v-menu').innerHTML=`
@@ -1961,7 +1963,7 @@ async function drawCard(o){
    if(im){const k=Math.max(tw/im.width,th/im.height),iw=im.width*k,ih=im.height*k;x.drawImage(im,tx+(tw-iw)/2,ty+(th-ih)/2,iw,ih)}else{f(700,70);T(d.trim().charAt(0).toUpperCase(),tx+tw/2,ty+th/2+25,'center','#239298')}
    x.restore();f(600,23);wrap2(x,d,tw-8).forEach((ln,j)=>T(ln,tx+tw/2,ty+th+34+j*30,'center'))});
   y+=Math.ceil(dishes.length/cols)*(th+92)+20}
- if(P){f(600,26);T(t('يشمل مع الطلب: شاي كرك','Included with the order: Karak tea'),S,y,AL,'#17666a');y+=46}
+ if(P){f(600,26);T(t('السعر يشمل معدات البوفية والخبز والشاي مجاناً','The price includes buffet equipment, bread and tea for free'),S,y,AL,'#17666a');y+=46}
  if(other.length){f(700,28);T(t('أصناف إضافية','Extra items'),S,y,AL,'#17666a');y+=44;f(400,24);other.forEach(l=>{T(fitTxt(x,`${l.qty} × ${nm(byId(l.id))}${l.note?' ('+l.note+')':''}`,W-2*M),S,y);y+=36});y+=10}
  if(extra){f(400,24);T(fitTxt(x,t('ملاحظة: ','Note: ')+extra,W-2*M),S,y,AL,'#5d6266');y+=40}
  // sum bar
