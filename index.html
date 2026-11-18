@@ -1040,7 +1040,8 @@ h2.bf-h{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
 @media (max-width:640px){.m-banner{aspect-ratio:4/3}}
 .o-del{display:inline-flex;align-items:center;gap:4px;margin-inline-start:auto;border:1px solid rgba(192,38,28,.35);color:#c0261c;background:rgba(255,255,255,.7);border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
 .o-del.armed{background:#c0261c;color:#fff;border-color:#c0261c}
-.upc-p .o-del{margin-top:6px;margin-inline-start:0}
+.upc-p .o-del,.tbl .o-del{margin-top:6px;margin-inline-start:0}
+.tbl .o-del{margin-top:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -1786,6 +1787,7 @@ function sBranch(){
 let unlocked=false,bTab='review',bBranch='all',rejecting=null,rejReason='',seen=new Set(),fresh=new Set(),edBrand='fareeq';
 try{unlocked=sessionStorage.getItem('fbq-board')==='1'}catch(e){}
 let isAdmin=false;try{isAdmin=localStorage.getItem('fbq-admin')==='1'}catch(e){}
+if(isAdmin)unlocked=true;
 let logoTaps=0,logoTimer=null;
 
 /* ================= Admin reports ================= */
@@ -1858,7 +1860,7 @@ function renderAdmin(){
  const tblRows=[...os].sort((a,b)=>b.at-a.at);
  let tP=0,tR=0;
  const rowsHtml=tblRows.map(o=>{const b=bfLines(o),pp=b.reduce((s,l)=>s+l.qty,0),rr=b.reduce((s,l)=>s+l.qty*priceOf(l.id),0);if(o.status!=='rejected'){tP+=pp;tR+=rr}
-  return `<tr><td>${esc(o.id)}</td><td>${new Date(o.at).toLocaleDateString(lang==='en'?'en-GB':'ar-BH-u-nu-latn',{day:'numeric',month:'short'})}</td><td>${o.ev?esc(fmtDate(o.ev.date)):'—'}</td><td>${esc(o.name)}</td><td class="ltr">${esc(o.phone)}</td><td>${esc(orderArea(o))}</td><td>${b.length?esc(b.map(l=>byId(l.id).pick).join('+'))+' '+L('أطباق','dishes'):L('منيو','Menu')}</td><td class="r">${pp||'—'}</td><td class="r">${rr?money(rr):'—'}</td><td><span class="chip st-${o.status}">${STATUS[o.status]||o.status}</span></td></tr>`}).join('');
+  return `<tr><td>${esc(o.id)}</td><td>${new Date(o.at).toLocaleDateString(lang==='en'?'en-GB':'ar-BH-u-nu-latn',{day:'numeric',month:'short'})}</td><td>${o.ev?esc(fmtDate(o.ev.date)):'—'}</td><td>${esc(o.name)}</td><td class="ltr">${esc(o.phone)}</td><td>${esc(orderArea(o))}</td><td>${b.length?esc(b.map(l=>byId(l.id).pick).join('+'))+' '+L('أطباق','dishes'):L('منيو','Menu')}</td><td class="r">${pp||'—'}</td><td class="r">${rr?money(rr):'—'}</td><td><span class="chip st-${o.status}">${STATUS[o.status]||o.status}</span></td><td><button type="button" class="o-del" data-act="ord-del" data-id="${o.id}" aria-label="${L('حذف الطلب','Delete order')} ${o.id}">${ic('trash',16)}<span>${L('حذف','Delete')}</span></button></td></tr>`}).join('');
  el.innerHTML=`<header class="b-head"><div class="wrap"><div class="row">
    <a class="icon-btn" href="#board" aria-label="${L('رجوع للوحة الطلبات','Back to orders board')}">${ic('back')}</a><h1>${L('التقارير','Reports')}</h1>
    <button class="icon-btn lang-btn" data-act="lang" aria-label="${L('Switch to English','التبديل إلى العربية')}">${lang==='en'?'<span class="l-ar">ع</span>':'EN'}</button><button class="icon-btn" data-act="alogout" aria-label="${L('تسجيل خروج الإدارة','Sign out admin')}" title="${L('تسجيل خروج الإدارة','Sign out admin')}">${ic('lock')}</button></div>
@@ -1884,8 +1886,8 @@ function renderAdmin(){
     <section class="rcard wide"><h3>${L('البوفيات القادمة','Upcoming buffets')}<small>${L('حسب الموعد','By date')}</small></h3>
      ${upc.length?`<div class="upc">${upc.map(o=>{const d=new Date(o.ev.date+'T12:00'),b=bfLines(o),pp=b.reduce((s,l)=>s+l.qty,0);return `<div class="upc-row"><div class="upc-d"><b class="num">${d.getDate()}</b><small>${d.toLocaleDateString(lang==='en'?'en-GB':'ar-BH-u-nu-latn',{month:'short'})}</small></div><div class="upc-m"><b>${esc(o.name)} · ${fmtTime(o.ev.from)}</b><small>${esc(fmtDate(o.ev.date))} · ${esc(orderArea(o))} · ${b.map(l=>esc(byId(l.id).name)).join('، ')}</small></div><div class="upc-p"><b class="num">${pp} ${L('شخص','ppl')}</b><span class="chip st-${o.status}">${STATUS_SHORT[o.status]||STATUS[o.status]}</span><button type="button" class="o-del" data-act="ord-del" data-id="${o.id}" aria-label="${L('حذف الطلب','Delete order')} ${o.id}">${ic('trash',16)}<span>${L('حذف','Delete')}</span></button></div></div>`}).join('')}</div>`:`<div class="r-empty">${L('لا توجد بوفيات قادمة.','No upcoming buffets.')}</div>`}</section>
     <section class="rcard wide"><div class="a-actions"><h3 style="margin:0">${L('كل الطلبات','All orders')}<small style="margin-inline-start:8px">${os.length}</small></h3><button class="btn btn-soft" data-act="acsv">${ic('download',18)}${L('تصدير Excel','Export to Excel')}</button></div>
-     ${os.length?`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${L('الطلب','Order')}</th><th>${L('تاريخ الطلب','Ordered')}</th><th>${L('موعد البوفية','Buffet date')}</th><th>${L('الاسم','Name')}</th><th>${L('الجوال','Mobile')}</th><th>${L('المنطقة','Area')}</th><th>${L('الخطة','Plan')}</th><th class="r">${L('الأشخاص','People')}</th><th class="r">${L('الإجمالي','Total')}</th><th>${L('الحالة','Status')}</th></tr></thead><tbody>${rowsHtml}</tbody>
-     <tfoot><tr><td colspan="7">${L('المجموع (بدون المرفوضة)','Total (excluding declined)')}</td><td class="r">${tP}</td><td class="r">${money(tR)}</td><td></td></tr></tfoot></table></div>`:`<div class="r-empty">${L('لا توجد طلبات في هذه الفترة.','No orders for this period.')}</div>`}</section>
+     ${os.length?`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${L('الطلب','Order')}</th><th>${L('تاريخ الطلب','Ordered')}</th><th>${L('موعد البوفية','Buffet date')}</th><th>${L('الاسم','Name')}</th><th>${L('الجوال','Mobile')}</th><th>${L('المنطقة','Area')}</th><th>${L('الخطة','Plan')}</th><th class="r">${L('الأشخاص','People')}</th><th class="r">${L('الإجمالي','Total')}</th><th>${L('الحالة','Status')}</th><th></th></tr></thead><tbody>${rowsHtml}</tbody>
+     <tfoot><tr><td colspan="7">${L('المجموع (بدون المرفوضة)','Total (excluding declined)')}</td><td class="r">${tP}</td><td class="r">${money(tR)}</td><td></td><td></td></tr></tfoot></table></div>`:`<div class="r-empty">${L('لا توجد طلبات في هذه الفترة.','No orders for this period.')}</div>`}</section>
     <section class="rcard wide"><h3>${L('معرض صور البوفية','Buffet photo gallery')}<small>${(store.gallery||[]).length+GALLERY_FILES.length} ${L('صورة','photos')}</small></h3>
      <div class="ga-grid">${galleryAll().map(g=>`<div class="ga-item"><img src="${g.src}" alt="">${GALLERY_FILES.includes(g.id)?'':`<button data-act="gal-del" data-id="${g.id}" aria-label="${L('حذف الصورة','Delete photo')}">${ic('trash',16)}</button>`}</div>`).join('')}
       <label class="ga-add">${ic('plus',22)}<span>${L('أضف صور البوفية','Add buffet photos')}</span><input type="file" id="ga-file" accept="image/*" multiple></label></div>
@@ -2212,7 +2214,8 @@ document.addEventListener('submit',e=>{
  if(e.target.id==='apin-form'){e.preventDefault();const v=($('#apin-new').value||'').replace(/\D/g,'');if(v.length<4){toast(L('الرمز 4 أرقام على الأقل','The code needs at least 4 digits'));return}store.settings.apin=v;save();$('#apin-new').value='';toast(L('تم حفظ رمز الإدارة','Admin code saved'));return}
  if(e.target.id==='bf-add-form'){e.preventDefault();const inp=$('#bf-new'),nm=inp.value.trim();if(!nm){inp.focus();return}store.buffet.push({id:'bi-'+Date.now().toString(36),name:nm});save();renderSheet();toast(L(`أُضيف «${nm}»`,`Added “${nm}”`));setTimeout(()=>{const n=$('#bf-new');if(n)n.focus()},30);return}
  if(e.target.id!=='gate')return;e.preventDefault();
- const pv=$('#pin').value.trim();if(view==='admin'&&pv===(store.settings.apin||'4321')){isAdmin=true;try{localStorage.setItem('fbq-admin','1')}catch(_){}renderAdmin()}else if(view!=='admin'&&pv===store.settings.pin){unlocked=true;try{sessionStorage.setItem('fbq-board','1')}catch(_){}renderBoard()}
+ const pv=$('#pin').value.trim();if(view==='admin'&&pv===(store.settings.apin||'4321')){isAdmin=true;try{localStorage.setItem('fbq-admin','1')}catch(_){}renderAdmin()}else if(view!=='admin'&&pv===(store.settings.apin||'4321')){isAdmin=true;unlocked=true;try{localStorage.setItem('fbq-admin','1');sessionStorage.setItem('fbq-board','1')}catch(_){}renderBoard()}
+ else if(view!=='admin'&&pv===store.settings.pin){unlocked=true;try{sessionStorage.setItem('fbq-board','1')}catch(_){}renderBoard()}
  else{$('#pin-err').hidden=false;const g=G();if(g)g.fromTo('#pin',{x:-10},{x:0,duration:.5,ease:'elastic.out(1,.3)'})}
 });
 document.addEventListener('keydown',e=>{const lb=$('#lb');if(lb&&!lb.hidden){if(e.key==='Escape')lb.hidden=true;else if(e.key==='ArrowLeft')lbShow(lbI+(lang==='en'?-1:1));else if(e.key==='ArrowRight')lbShow(lbI+(lang==='en'?1:-1));return}if(e.key==='Escape'){if(!$('#viewer').hidden)$('#viewer').hidden=true;else closeSheet()}});
