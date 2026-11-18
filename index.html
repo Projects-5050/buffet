@@ -1021,6 +1021,9 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradi
 .pdf-prev{display:block;width:100%;max-width:300px;margin:0 auto 14px;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.08),0 18px 34px -20px rgba(20,40,42,.5)}
 .pdf-acts{display:grid;gap:10px}
 .btn-wa{background:#1fa855;color:#fff}
+button.slot.vacant{font:inherit;color:inherit;padding:0;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button.slot.vacant:active{transform:scale(.95)}
+button.slot.vacant:focus-visible{outline:3px solid rgba(35,146,152,.45);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -1587,7 +1590,7 @@ function bfPlate(m){
  const picked=Object.keys(itemPicks).filter(k=>itemPicks[k]),pool=store.buffet||[],n=m.pick,cols=Math.ceil(n/2);
  let h='';for(let i=0;i<n;i++){const k=picked[i],d=k&&pool.find(z=>z.id===k);
   if(d){const im=bfDishImg(d);h+=`<span class="slot full" data-k="${d.id}">${im?`<img src="${im}" alt="">`:`<span class="ini">${esc(d.name.trim().charAt(0))}</span>`}<span class="nm">${esc(d.name)}</span></span>`}
-  else h+=`<span class="slot vacant" aria-hidden="true"></span>`}
+  else h+=`<button type="button" class="slot vacant" data-act="bf-menu" aria-label="${L('أضف طبق من المنيو','Add a dish from the menu')}"></button>`}
  return `<div class="plate-wrap"><div class="plate-head"><b class="num">${picked.length}/${n}</b><small>${picked.length===n?L('اكتملت أطباقك','All dishes chosen'):L(`باقي ${n-picked.length} أطباق`,`${n-picked.length} dishes to go`)}</small></div><div class="tray" style="--cols:${cols}" aria-label="${L(`صحن البوفية: ${picked.length} من ${n}`,`Buffet tray: ${picked.length} of ${n}`)}">${h}</div></div>`;
 }
 let plateSeen=new Set();
