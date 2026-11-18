@@ -1375,7 +1375,7 @@ function seedStore(){
  ];
  return {v:1,wiped:1,seq:1000,settings:{holder:'مطعم فريج بن عاقول',bank:'اسم البنك',iban:'BH67BMAG00001299123456',benefit:'33000000',fee:.5,pin:'1234',apin:'4321',sample:true,wa:{all:''}},buffet:seedBuffet(),menuEdits:{},orders:[],mine:[],profile:{name:'',phone:'',branch:''},carts:{fareeq:[],buns:[]}};
 }
-function loadStore(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.v===1){if(s.settings&&s.settings.holder==='مطعم فريق بن عاقول')s.settings.holder='مطعم فريج بن عاقول';['fareeq','buns'].forEach(b=>s.carts[b]=(s.carts[b]||[]).filter(l=>byId(l.id)&&!byId(l.id).included));s.orders=s.orders.filter(o=>o.items.every(l=>byId(l.id)));if(!Array.isArray(s.buffet))s.buffet=seedBuffet();s.buffet=s.buffet.filter(x=>!REMOVED.some(r=>x.id==='bi-'+r));MENU.filter(z=>z.b==='fareeq'&&['bread','sides'].includes(z.cat)).map(z=>z.id).forEach(id=>{const m=MENU.find(z=>z.id===id);if(m&&!s.buffet.some(x=>x.id==='bi-'+id))s.buffet.push({id:'bi-'+id,name:m._ar?m._ar[0]:m.name})});s.buffet.forEach(x=>{if(x.id==='bi-m9'&&x.name==='صالونة دجاج')x.name='ناشف دجاج';if(x.id==='bi-w1'&&x.name==='فطيطة')x.name='فتيتة'});if(!s.settings.wa)s.settings.wa={all:''};if(!s.settings.apin)s.settings.apin='4321';if(!Array.isArray(s.gallery))s.gallery=[];if(!s.wiped){s.orders=[];s.mine=[];s.carts={fareeq:[],buns:[]};s.profile={name:'',phone:'',branch:''};s.seq=1000;s.teaSel=['f11'];s.wiped=1;try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}}return s}}catch(e){}return seedStore()}
+function loadStore(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.v===1){if(s.settings&&s.settings.holder==='مطعم فريق بن عاقول')s.settings.holder='مطعم فريج بن عاقول';['fareeq','buns'].forEach(b=>s.carts[b]=(s.carts[b]||[]).filter(l=>byId(l.id)&&!byId(l.id).included));s.orders=s.orders.filter(o=>o.items.every(l=>byId(l.id)));if(!Array.isArray(s.buffet))s.buffet=seedBuffet();s.buffet=s.buffet.filter(x=>!REMOVED.some(r=>x.id==='bi-'+r));MENU.filter(z=>z.b==='fareeq'&&['bread','sides'].includes(z.cat)).map(z=>z.id).forEach(id=>{const m=MENU.find(z=>z.id===id);if(m&&!s.buffet.some(x=>x.id==='bi-'+id))s.buffet.push({id:'bi-'+id,name:m._ar?m._ar[0]:m.name})});s.buffet.forEach(x=>{const mm=String(x.id).startsWith('bi-')&&MENU.find(z=>z.id===String(x.id).slice(3));if(mm&&mm._ar)x.name=mm._ar[0];if(x.id==='bi-m9'&&x.name==='صالونة دجاج')x.name='ناشف دجاج';if(x.id==='bi-w1'&&x.name==='فطيطة')x.name='فتيتة'});if(!s.settings.wa)s.settings.wa={all:''};if(!s.settings.apin)s.settings.apin='4321';if(!Array.isArray(s.gallery))s.gallery=[];if(!s.wiped){s.orders=[];s.mine=[];s.carts={fareeq:[],buns:[]};s.profile={name:'',phone:'',branch:''};s.seq=1000;s.teaSel=['f11'];s.wiped=1;try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}}return s}}catch(e){}return seedStore()}
 let store=loadStore();
 function save(){
  for(let tries=0;tries<3;tries++){
@@ -1569,7 +1569,8 @@ const head=(t,back)=>`<div class="sh-head">${back?`<button class="icon-btn" data
 let itemQty=1,itemSz=0,itemPicks={};
 const pickPool=m=>m.buffet?(store.buffet||[]).filter(x=>!x.off):MENU.filter(x=>x.b===m.b&&(m.b==='fareeq'?['eggs','trad','mains','sweets']:['buns']).includes(x.cat)&&isAvail(x.id));
 const pickTotal=()=>Object.values(itemPicks).reduce((s,n)=>s+n,0);
-const pickNote=m=>pickPool(m).filter(x=>itemPicks[x.id]).map(x=>x.name+(itemPicks[x.id]>1?' ×'+itemPicks[x.id]:'')).join(L('، ',', '));
+const poolName=x=>{const m=x&&x.id&&String(x.id).startsWith('bi-')&&byId(String(x.id).slice(3));return m?m.name:x.name};
+const pickNote=m=>pickPool(m).filter(x=>itemPicks[x.id]).map(x=>poolName(x)+(itemPicks[x.id]>1?' ×'+itemPicks[x.id]:'')).join(L('، ',', '));
 const RING=2*Math.PI*21;let ringPrev=null;
 const bfRing=(t,p)=>`<span class="bf-ring${t===p?' full':''}" role="status" aria-label="${L(`تم اختيار ${t} من ${p}`,`${t} of ${p} chosen`)}"><svg viewBox="0 0 50 50" aria-hidden="true"><circle class="tr" cx="25" cy="25" r="21"/><circle class="pg" cx="25" cy="25" r="21" stroke-dasharray="${RING.toFixed(2)}" stroke-dashoffset="${(RING*(1-t/p)).toFixed(2)}"/></svg><span class="num">${t}/${p}</span></span>`;
 const bfRow=(x,n,m)=>`<button class="line pick-row txt bf-opt${n?' on':''}" data-act="ptog" data-v="${x.id}" aria-pressed="${!!n}" ${!n&&pickTotal()>=m.pick?'disabled':''}><span class="meta"><b>${esc(x.name)}</b></span><span class="bf-tick" aria-hidden="true">${n?ic('check',16):''}</span></button>`;
@@ -1608,7 +1609,7 @@ const bfDishImg=x=>{const m=byId((x.id||'').replace(/^bi-/,''));return m&&m.img?
 function bfPlate(m){
  const picked=Object.keys(itemPicks).filter(k=>itemPicks[k]),pool=store.buffet||[],n=m.pick,cols=Math.ceil(n/2);
  let h='';for(let i=0;i<n;i++){const k=picked[i],d=k&&pool.find(z=>z.id===k);
-  if(d){const im=bfDishImg(d);h+=`<span class="slot full" data-k="${d.id}">${im?`<img src="${im}" alt="">`:`<span class="ini">${esc(d.name.trim().charAt(0))}</span>`}<span class="nm">${esc(d.name)}</span></span>`}
+  if(d){const im=bfDishImg(d);h+=`<span class="slot full" data-k="${d.id}">${im?`<img src="${im}" alt="">`:`<span class="ini">${esc(poolName(d).trim().charAt(0))}</span>`}<span class="nm">${esc(poolName(d))}</span></span>`}
   else h+=`<button type="button" class="slot vacant" data-act="bf-menu" aria-label="${L('أضف طبق من المنيو','Add a dish from the menu')}"></button>`}
  return `<div class="plate-wrap"><div class="plate-head"><b class="num">${picked.length}/${n}</b><small>${picked.length===n?L('اكتملت أطباقك','All dishes chosen'):L(`باقي ${n-picked.length} أطباق`,`${n-picked.length} dishes to go`)}</small></div><div class="tray" style="--cols:${cols}" aria-label="${L(`صحن البوفية: ${picked.length} من ${n}`,`Buffet tray: ${picked.length} of ${n}`)}">${h}</div></div>`;
 }
@@ -1929,7 +1930,7 @@ function lbShow(i){const all=galleryAll();if(!all.length)return;{const lb=$('#lb
 /* ---------------- order confirmation PDF ---------------- */
 const pdfCache=new Map(),pdfFail=new Set();
 function noteDishes(note){const first=(note||'').split(' · ')[0];if(!/^(الأطباق|Dishes)\s*:/.test(first))return [];return first.replace(/^(الأطباق|Dishes)\s*:\s*/,'').split(/\s*[،,]\s*/).filter(Boolean)}
-function dishImg(n){const k=String(n).replace(/\s*×\d+$/,'').trim().toLowerCase();const m=MENU.find(x=>[x.name,x._ar&&x._ar[0],MENU_EN[x.id]&&MENU_EN[x.id][0]].some(v=>v&&String(v).trim().toLowerCase()===k));return m&&m.img?m.img:''}
+function dishImg(n){const k=String(n).replace(/\s*×\d+$/,'').trim().toLowerCase();let m=MENU.find(x=>[x.name,x._ar&&x._ar[0],MENU_EN[x.id]&&MENU_EN[x.id][0]].some(v=>v&&String(v).trim().toLowerCase()===k));if(!m){const p=(store.buffet||[]).find(x=>String(x.name).trim().toLowerCase()===k);if(p&&String(p.id).startsWith('bi-'))m=byId(String(p.id).slice(3))}if(!m&&/بن عاقول/.test(k)&&/بيض/.test(k))m=byId('e1');return m&&m.img?m.img:''}
 const pdfKey=o=>o.id+(o.status==='review'?':new':':ok');
 function pdfImg(src){return new Promise(r=>{if(!src)return r(null);const im=new Image();im.onload=()=>r(im);im.onerror=()=>r(null);im.src=src})}
 function rr(x,c,X,Y,W,H,R){x.beginPath();x.moveTo(X+R,Y);x.arcTo(X+W,Y,X+W,Y+H,R);x.arcTo(X+W,Y+H,X,Y+H,R);x.arcTo(X,Y+H,X,Y,R);x.arcTo(X,Y,X+W,Y,R);x.closePath();if(c){x.fillStyle=c;x.fill()}}
