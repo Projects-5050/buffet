@@ -2019,7 +2019,9 @@ const custWaLink=o=>{const n=isNewO(o)?ORDER_WA:'973'+String(o.phone||'').replac
 function sPdf(id){
  const o=store.orders.find(x=>x.id===id);if(!o)return head(L('ملف التأكيد','Confirmation PDF'));
  const r=pdfCache.get(pdfKey(o)),nw=isNewO(o);
- if(nw)return head(L('آخر خطوة: أرسل طلبك','Last step: send your order'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف الطلب','Order preview')}">`:pdfFail.has(pdfKey(o))?`<div class="empty">${L('ما قدرنا نجهز ملف PDF. طلبك محفوظ، اضغط «حاول مرة ثانية».','We could not build the PDF. Your order is saved; tap “Try again”.')}<br><button class="btn btn-soft" style="margin-top:10px" data-act="pdf-retry" data-id="${o.id}">${L('حاول مرة ثانية','Try again')}</button></div>`:`<div class="empty">${L('نجهز ملف الطلب…','Preparing your order file…')}</div>`)+`
+ const ws=waState[o.id];
+ if(nw&&(ws==='sending'||ws==='sent'))return head(ws==='sent'?L('تم إرسال طلبك ✓','Your order was sent ✓'):L('نرسل طلبك للمطعم…','Sending your order…'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('صورة الطلب','Order image')}">`:'')+`<p style="color:var(--muted);margin:0 0 14px;text-align:center">${ws==='sent'?L('وصلت صورة طلبك لواتساب المطعم، وبنتواصل معك لتأكيد الطلب.','Your order image reached the restaurant WhatsApp. We will contact you to confirm.'):L('لحظات، نرسل صورة الطلب لواتساب المطعم.','One moment, sending the order image to the restaurant WhatsApp.')}</p><div class="pdf-acts"><button class="btn btn-soft btn-block" data-act="pdf-track" data-id="${o.id}">${L('متابعة الطلب','Track order')}</button></div>`;
+ if(nw)return head(ws==='failed'?L('ما قدرنا نرسل تلقائياً، أرسلها من هنا','Could not send automatically, send it here'):L('آخر خطوة: أرسل طلبك','Last step: send your order'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف الطلب','Order preview')}">`:pdfFail.has(pdfKey(o))?`<div class="empty">${L('ما قدرنا نجهز ملف PDF. طلبك محفوظ، اضغط «حاول مرة ثانية».','We could not build the PDF. Your order is saved; tap “Try again”.')}<br><button class="btn btn-soft" style="margin-top:10px" data-act="pdf-retry" data-id="${o.id}">${L('حاول مرة ثانية','Try again')}</button></div>`:`<div class="empty">${L('نجهز ملف الطلب…','Preparing your order file…')}</div>`)+`
  <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L('اضغط الزر وأرسل صورة الطلب للمطعم على الواتساب <span dir="ltr" style="unicode-bidi:isolate">+973 33787872</span>، وتقدر تحفظ نسخة PDF عندك.','Tap the button to send the order image to the restaurant on WhatsApp +973 33787872. You can also save a PDF copy.')}</p>
  <div class="pdf-acts">
   <button class="btn btn-wa btn-block" data-act="pdf-wa" data-id="${o.id}" ${r?'':'disabled'}>${L('إرسال الطلب صورة عبر الواتساب','Send order image on WhatsApp')}</button>
@@ -2036,7 +2038,20 @@ function sPdf(id){
  <span class="hint" style="display:block;margin-top:12px;text-align:center">${L('على الجوال تختار الواتساب ثم الزبون. على الكمبيوتر ينحفظ الملف وتنفتح محادثة الزبون، اسحب الملف فيها.','On a phone, pick WhatsApp then the customer. On a computer the file is saved and the chat opens; drag the file into it.')}</span>`;
 }
 function saveImg(r,id){try{const a=document.createElement('a');a.href=URL.createObjectURL(r.img);a.download=`${id}.jpg`;document.body.appendChild(a);a.click();a.remove()}catch(e){}}
+const WA_FN='https://lzadmbjhcxqvafykntsp.supabase.co/functions/v1/buffet-wa',WA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6YWRtYmpoY3hxdmFmeWtudHNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQwOTYsImV4cCI6MjEwNTA0MDA5Nn0.HNGwF8_lHrUHU_Xhx9Ymn0eoLHGaJ2GVd69umNNkXCI';
+let waAuto=false;const waState={};
+try{fetch(WA_FN,{headers:{Authorization:'Bearer '+WA_KEY,apikey:WA_KEY}}).then(r=>r.ok?r.json():{}).then(j=>{waAuto=!!(j&&j.configured)}).catch(()=>{})}catch(e){}
+async function waAutoSend(o){
+ waState[o.id]='sending';
+ try{const r=await makePdf(o);const img=r.cv.toDataURL('image/jpeg',.85);
+  const res=await fetch(WA_FN,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+WA_KEY,apikey:WA_KEY},body:JSON.stringify({id:o.id,image:img,caption:custWaText(o)})});
+  const j=await res.json().catch(()=>({}));waState[o.id]=j&&j.ok?'sent':'failed';
+  if(j&&j.ok){o.waSent=1;save();toast(L('وصل طلبك للمطعم على الواتساب ✓','Your order reached the restaurant on WhatsApp ✓'))}
+ }catch(e){waState[o.id]='failed'}
+ if(sheetKind==='pdf'&&sheetArg===o.id)renderSheet();
+}
 function sendOrderNow(o){
+ if(waAuto){openSheet('pdf',o.id);waAutoSend(o);return}
  const coarse=matchMedia('(pointer:coarse)').matches;
  if(coarse){pdfOpen(o.id);return}   // phone: show the ready image + one share button (reliable, no paste)
  const p=makePdf(o),w=custWaLink(o);
