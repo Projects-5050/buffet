@@ -1579,7 +1579,8 @@ let bfBuild=null;
 const bfCount=()=>bfBuild?Object.values(bfBuild.picks).reduce((a,n)=>a+n,0):0;
 const bfOn=m=>{if(!bfBuild)return false;const e=bfEntry(m);return !!(e&&bfBuild.picks[e.id])};
 document.addEventListener('input',e=>{const f=e.target.closest&&e.target.closest('.field');if(f&&/^c-/.test(e.target.id||'')){e.target.classList.remove('bad');const er=f.querySelector('.err');if(er)er.remove();const k={'c-blk':'blk','c-rd':'rd','c-bld':'bh','c-hse':'bh','c-name':'name','c-phone':'phone','c-addr':'address','c-area':'area','c-date':'date','c-from':'from','c-to':'to','c-loc':'loc'}[e.target.id];if(k&&checkout.errors)delete checkout.errors[k];if(k==='bh'){const eb=$('#err-bh');if(eb)eb.remove()}}});
-document.addEventListener('change',e=>{if(e.target.id==='c-date'){checkout.date=e.target.value;checkout.from='';checkout.to='';const sl=$('#c-slots');if(sl)sl.innerHTML=slotHTML(checkout.errors||{})}if(e.target.id==='c-to')checkout.to=e.target.value;if(e.target.id==='c-area'||e.target.id==='c-date'||e.target.id==='c-from'||e.target.id==='c-to')e.target.dispatchEvent(new Event('input',{bubbles:true}))});
+document.addEventListener('change',e=>{if(e.target&&e.target.closest&&e.target.closest('.sheet'))schedDraft();if(e.target.id==='c-date'){checkout.date=e.target.value;checkout.from='';checkout.to='';const sl=$('#c-slots');if(sl)sl.innerHTML=slotHTML(checkout.errors||{})}if(e.target.id==='c-to')checkout.to=e.target.value;if(e.target.id==='c-area'||e.target.id==='c-date'||e.target.id==='c-from'||e.target.id==='c-to')e.target.dispatchEvent(new Event('input',{bubbles:true}))});
+document.addEventListener('input',e=>{if(e.target&&e.target.closest&&e.target.closest('.sheet'))schedDraft()});
 document.addEventListener('input',e=>{if(e.target.id!=='bf-ppl')return;const n=parseInt(e.target.value,10);if(!n)return;itemQty=Math.min(500,n);const pr=priceOf(sheetArg),ok=itemQty>=BF_MIN,bt=$('#bf-total'),bc=$('#bf-calc'),bb=$('#bf-btn-total');if(bt)bt.textContent=bhd(pr*itemQty)+' '+CUR();if(bc)bc.textContent=itemQty+' × '+bhd(pr);if(bb)bb.textContent=bhd(pr*itemQty);const add=$('[data-act="item-add"]');if(add&&pickTotal()===byId(sheetArg).pick)add.disabled=!ok});
 document.addEventListener('change',e=>{if(e.target.id!=='bf-ppl')return;const n=parseInt(e.target.value,10)||BF_MIN;if(n<BF_MIN)toast(L(`الحد الأدنى للبوفية ${BF_MIN} شخص`,`Buffet minimum is ${BF_MIN} people`));itemQty=Math.max(BF_MIN,Math.min(500,n));const st=$('.sheet').scrollTop;renderSheet();$('.sheet').scrollTop=st});
 function bfRefreshCards(){document.documentElement.classList.toggle('bf-mode',!!bfBuild);$$('.card').forEach(c=>refreshCard(c.dataset.id));renderCartBar()}
@@ -1733,15 +1734,28 @@ function sPay(){
   </div>
   <div class="sh-foot"><button class="btn btn-main btn-block" data-act="submit" ${checkout.receipt?'':'disabled'}>${checkout.receipt?L('أرسل الطلب','Place order'):L('ارفع الإيصال لإرسال الطلب','Upload the receipt to place the order')}</button></div>`;
 }
+function buildOrder(seq,at){return {id:BRANDS[brand].px+'-'+seq,brand,items:cart().map(l=>({id:l.id,qty:l.qty,note:l.note,sz:l.sz||0})),type:checkout.type,branch:store.profile.branch,address:checkout.type==='delivery'?(checkout.area?checkout.area+' · ':'')+checkout.address:'',name:store.profile.name,phone:store.profile.phone,status:'review',lang,at:Date.now(),ev:cartHasBf()?{tea:teaSel(),date:checkout.date,from:checkout.from,to:checkout.to,loc:!checkout.loc?'':/^-?\d/.test(checkout.loc)?'https://maps.google.com/?q='+checkout.loc.replace(/\s/g,''):checkout.loc}:null,_at:at}}
+let draft=null,draftT=null;
+const draftKey=o=>{const c={...o};delete c.at;delete c._at;return JSON.stringify(c)};
+function schedDraft(){clearTimeout(draftT);draftT=setTimeout(async()=>{try{if(!cartHasBf()||!matchMedia('(pointer:coarse)').matches)return;readCartForm();if(!checkout.date||!checkout.from)return;
+ const at=Date.now(),o=buildOrder(store.seq+1,at);o.at=at;delete o._at;const k=draftKey(o);if(draft&&draft.key===k)return;
+ const cv=await drawCard(o);const b=await new Promise(r=>cv.toBlob(r,'image/jpeg',.9));draft={key:k,at,file:new File([b],o.id+'.jpg',{type:'image/jpeg'})}}catch(e){}},450)}
 function submitOrder(){
+ const coarse=matchMedia('(pointer:coarse)').matches;
+ const pre=buildOrder(store.seq+1,0);delete pre._at;
+ let shared=null;
+ if(coarse&&draft&&cartHasBf()&&draft.key===draftKey(pre)&&navigator.canShare&&navigator.canShare({files:[draft.file]})){
+  try{shared=navigator.share({files:[draft.file]})}catch(e){shared=null}
+ }
  store.seq++;
- const o={id:BRANDS[brand].px+'-'+store.seq,brand,items:cart().map(l=>({id:l.id,qty:l.qty,note:l.note,sz:l.sz||0})),type:checkout.type,branch:store.profile.branch,address:checkout.type==='delivery'?(checkout.area?checkout.area+' · ':'')+checkout.address:'',name:store.profile.name,phone:store.profile.phone,status:'review',lang,at:Date.now(),ev:cartHasBf()?{tea:teaSel(),date:checkout.date,from:checkout.from,to:checkout.to,loc:!checkout.loc?'':/^-?\d/.test(checkout.loc)?'https://maps.google.com/?q='+checkout.loc.replace(/\s/g,''):checkout.loc}:null};
+ const o=buildOrder(store.seq,0);delete o._at;o.at=shared?draft.at:Date.now();
  store.orders.unshift(o);store.mine.unshift(o.id);store.carts[brand]=[];
  if(store.orders.length>80)store.orders.length=80;
  if(!save()){toast(L('مساحة التخزين ممتلئة، احذف طلبات قديمة من لوحة الفرع','Storage is full. Delete old orders from the branch board'));return}
  checkout.receipt=null;checkout.errors={};if(o.ev){checkout.date='';checkout.from='';checkout.to=''}
  renderMenu();
- if(isBuffetOrder(o)){sendOrderNow(o)}else{const w=waLink(o);if(w)window.open(w,'_blank','noopener');openSheet('track',o.id)}
+ if(isBuffetOrder(o)&&shared){draft=null;waState[o.id]='sending';openSheet('pdf',o.id);makePdf(o).then(()=>{if(sheetKind==='pdf'&&sheetArg===o.id)renderSheet()}).catch(()=>{});shared.then(()=>{waState[o.id]='shared';renderSheet()}).catch(()=>{delete waState[o.id];renderSheet()})}
+ else if(isBuffetOrder(o)){sendOrderNow(o)}else{const w=waLink(o);if(w)window.open(w,'_blank','noopener');openSheet('track',o.id)}
 }
 const FLOW=['review','confirmed','preparing','ready','done'];
 const isBuffetOrder=o=>o.items.some(l=>{const m=byId(l.id);return m&&m.buffet});
@@ -2020,7 +2034,7 @@ function sPdf(id){
  const o=store.orders.find(x=>x.id===id);if(!o)return head(L('ملف التأكيد','Confirmation PDF'));
  const r=pdfCache.get(pdfKey(o)),nw=isNewO(o);
  const ws=waState[o.id];
- if(nw&&(ws==='sending'||ws==='sent'))return head(ws==='sent'?L('تم إرسال طلبك ✓','Your order was sent ✓'):L('نرسل طلبك للمطعم…','Sending your order…'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('صورة الطلب','Order image')}">`:'')+`<p style="color:var(--muted);margin:0 0 14px;text-align:center">${ws==='sent'?L('وصلت صورة طلبك لواتساب المطعم، وبنتواصل معك لتأكيد الطلب.','Your order image reached the restaurant WhatsApp. We will contact you to confirm.'):L('لحظات، نرسل صورة الطلب لواتساب المطعم.','One moment, sending the order image to the restaurant WhatsApp.')}</p><div class="pdf-acts"><button class="btn btn-soft btn-block" data-act="pdf-track" data-id="${o.id}">${L('متابعة الطلب','Track order')}</button></div>`;
+ if(nw&&(ws==='sending'||ws==='sent'||ws==='shared'))return head(ws==='sent'||ws==='shared'?L('تم إرسال طلبك ✓','Your order was sent ✓'):L('نرسل طلبك للمطعم…','Sending your order…'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('صورة الطلب','Order image')}">`:'')+`<p style="color:var(--muted);margin:0 0 14px;text-align:center">${ws==='shared'?L('إذا اخترت محادثة المطعم وضغطت إرسال، فطلبك وصل. بنتواصل معك لتأكيد الطلب.','If you chose the restaurant chat and tapped Send, your order is in. We will contact you to confirm.'):ws==='sent'?L('وصلت صورة طلبك لواتساب المطعم، وبنتواصل معك لتأكيد الطلب.','Your order image reached the restaurant WhatsApp. We will contact you to confirm.'):L('لحظات، نرسل صورة الطلب لواتساب المطعم.','One moment, sending the order image to the restaurant WhatsApp.')}</p><div class="pdf-acts"><button class="btn btn-soft btn-block" data-act="pdf-track" data-id="${o.id}">${L('متابعة الطلب','Track order')}</button></div>`;
  if(nw)return head(ws==='failed'?L('ما قدرنا نرسل تلقائياً، أرسلها من هنا','Could not send automatically, send it here'):L('آخر خطوة: أرسل طلبك','Last step: send your order'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('معاينة ملف الطلب','Order preview')}">`:pdfFail.has(pdfKey(o))?`<div class="empty">${L('ما قدرنا نجهز ملف PDF. طلبك محفوظ، اضغط «حاول مرة ثانية».','We could not build the PDF. Your order is saved; tap “Try again”.')}<br><button class="btn btn-soft" style="margin-top:10px" data-act="pdf-retry" data-id="${o.id}">${L('حاول مرة ثانية','Try again')}</button></div>`:`<div class="empty">${L('نجهز ملف الطلب…','Preparing your order file…')}</div>`)+`
  <p style="color:var(--muted);margin:0 0 14px;text-align:center">${L('اضغط الزر وأرسل صورة الطلب للمطعم على الواتساب <span dir="ltr" style="unicode-bidi:isolate">+973 33787872</span>، وتقدر تحفظ نسخة PDF عندك.','Tap the button to send the order image to the restaurant on WhatsApp +973 33787872. You can also save a PDF copy.')}</p>
  <div class="pdf-acts">
@@ -2196,7 +2210,7 @@ document.addEventListener('click',async e=>{
   case 'copy':copy(v,t);break;
   case 'submit':submitOrder();break;
   case 'btab':bTab=v;rejecting=null;renderBoard();break;
-  case 'slot':{readCartForm();checkout.from=v;checkout.to='';if(checkout.errors){delete checkout.errors.from;delete checkout.errors.to}const sl=$('#c-slots');if(sl)sl.innerHTML=slotHTML(checkout.errors||{});break}
+  case 'slot':{readCartForm();checkout.from=v;checkout.to='';if(checkout.errors){delete checkout.errors.from;delete checkout.errors.to}const sl=$('#c-slots');if(sl)sl.innerHTML=slotHTML(checkout.errors||{});schedDraft();break}
   case 'tea':{const a=[id];store.teaSel=a;save();
    document.querySelectorAll('.tea-pick').forEach(b=>{const on=a.includes(b.dataset.id);b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);b.innerHTML=on?ic('check',14)+L('مختار','Chosen'):L('اختر','Choose')});break}
   case 'ord-del':{if(!isAdmin)break;if(t.dataset.armed!=='1'){document.querySelectorAll('.o-del[data-armed="1"]').forEach(b=>{b.dataset.armed='';b.classList.remove('armed');b.querySelector('span').textContent=L('حذف','Delete')});t.dataset.armed='1';t.classList.add('armed');t.querySelector('span').textContent=L('تأكيد الحذف','Confirm delete');clearTimeout(t._dt);t._dt=setTimeout(()=>{t.dataset.armed='';t.classList.remove('armed');const sp=t.querySelector('span');if(sp)sp.textContent=L('حذف','Delete')},4000);break}
