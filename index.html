@@ -1614,6 +1614,7 @@ function sItem(id){
 let checkout={type:'delivery',address:'',area:'',pay:'iban',receipt:null,errors:{},date:'',from:'',to:'',loc:''};
 const cartHasBf=()=>cart().some(l=>{const m=byId(l.id);return m&&m.buffet});
 const todayISO=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const tomorrowISO=()=>{const d=new Date();d.setDate(d.getDate()+1);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
 const fmtDate=iso=>{try{return new Date(iso+'T12:00').toLocaleDateString(lang==='en'?'en-GB':'ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long'})}catch(e){return iso}};
 const BF_PER_DAY=2,BF_GAP=120,BF_OPEN=6,BF_CLOSE=23,BF_DEF_LEN=3,ORDER_WA='97366750818';
 const tMin=t=>{const[h,m]=String(t||'0:0').split(':').map(Number);return h*60+(m||0)};
@@ -1622,6 +1623,7 @@ function bfBooked(date){return store.orders.filter(o=>o.ev&&o.ev.date===date&&o.
 function bfFits(date,a,b){const bk=bfBooked(date);if(bk.length>=BF_PER_DAY)return false;return bk.every(x=>a>=x.b+BF_GAP||b<=x.a-BF_GAP)}
 function slotHTML(e){
  if(!checkout.date)return `<p class="slot-note">${L('اختر التاريخ أولاً لتظهر الأوقات المتاحة.','Choose the date first to see the free times.')}</p>`;
+ if(checkout.date<tomorrowISO())return `<p class="slot-note bad">${L('نستقبل حجز البوفية قبلها بيوم على الأقل، اختر من بكرة وطالع.','Buffets must be booked at least one day ahead. Choose tomorrow or later.')}</p>`;
  const bk=bfBooked(checkout.date);
  if(bk.length>=BF_PER_DAY)return `<p class="slot-note bad">${L('هذا اليوم محجوز بالكامل، اختر يوماً آخر.','This day is fully booked. Choose another day.')}</p>`;
  const starts=[];for(let h=BF_OPEN;h<=BF_CLOSE-1;h++)starts.push(h*60);
@@ -1647,7 +1649,7 @@ function sCart(){
    ${checkout.type==='delivery'?`<div class="field"><label for="c-area">${L('منطقة التوصيل','Delivery area')}</label><select class="input${e.area?' bad':''}" id="c-area"><option value="">${L('اختر منطقتك','Choose your area')}</option>${AREAS.map(([g,l])=>`<optgroup label="${g}">${l.map(a=>`<option ${checkout.area===a?'selected':''}>${esc(a)}</option>`).join('')}</optgroup>`).join('')}</select>${e.area?`<span class="err">${e.area}</span>`:''}</div><div class="row2"><div class="field"><label for="c-bld">${L('رقم المبنى','Building')}</label><input class="input num${e.bld?' bad':''}" id="c-bld" inputmode="text" value="${esc((checkout.ad||{}).bld||'')}" placeholder="${L('اختياري','Optional')}">${e.bld?`<span class="err">${e.bld}</span>`:''}</div><div class="field"><label for="c-hse">${L('رقم المنزل','House')}</label><input class="input num${e.hse?' bad':''}" id="c-hse" inputmode="text" value="${esc((checkout.ad||{}).hse||'')}" placeholder="${L('اختياري','Optional')}">${e.hse?`<span class="err">${e.hse}</span>`:''}</div></div><div class="row2"><div class="field"><label for="c-flat">${L('رقم الشقة','Flat')}</label><input class="input num${e.flat?' bad':''}" id="c-flat" inputmode="text" value="${esc((checkout.ad||{}).flat||'')}" placeholder="${L('اختياري','Optional')}">${e.flat?`<span class="err">${e.flat}</span>`:''}</div><div></div></div><div class="row2"><div class="field"><label for="c-blk">${L('رقم المجمع','Block')}</label><input class="input num${e.blk?' bad':''}" id="c-blk" inputmode="numeric" value="${esc((checkout.ad||{}).blk||'')}">${e.blk?`<span class="err">${e.blk}</span>`:''}</div><div class="field"><label for="c-rd">${L('رقم الطريق','Road')}</label><input class="input num${e.rd?' bad':''}" id="c-rd" inputmode="numeric" value="${esc((checkout.ad||{}).rd||'')}">${e.rd?`<span class="err">${e.rd}</span>`:''}</div></div>${e.bh?`<span class="err" id="err-bh">${e.bh}</span>`:''}`:''}
   </div>
   ${hasBf?`<div class="sh-sec"><h3>${L('موعد البوفية والموقع','Buffet time and location')}</h3>
-   <div class="field"><label for="c-date">${L('التاريخ','Date')}</label><input class="input${e.date?' bad':''}" id="c-date" type="date" min="${todayISO()}" value="${esc(checkout.date)}">${e.date?`<span class="err">${e.date}</span>`:''}</div>
+   <div class="field"><label for="c-date">${L('التاريخ','Date')}</label><input class="input${e.date?' bad':''}" id="c-date" type="date" min="${tomorrowISO()}" value="${esc(checkout.date)}">${e.date?`<span class="err">${e.date}</span>`:`<span class="hint">${L('الحجز قبل موعد البوفية بيوم على الأقل.','Book at least one day before the buffet.')}</span>`}</div>
    <div id="c-slots">${slotHTML(e)}</div>
    <div class="field"><label for="c-loc">${L('الموقع على الخريطة (اختياري)','Location on the map (optional)')}</label>
     <button class="btn btn-soft btn-block" data-act="geo" type="button">${ic('pin',18)}${checkout.loc?L('تم تحديد الموقع، اضغط للتحديث','Location set, tap to update'):L('حدد موقعي الحالي','Use my current location')}</button>
@@ -1676,7 +1678,7 @@ function validateCart(){
  {const A=checkout.ad||{};if(!A.blk)e.blk=L('اكتب رقم المجمع.','Enter the block number.');if(!A.rd)e.rd=L('اكتب رقم الطريق.','Enter the road number.');if(!A.bld&&!A.hse)e.bh=L('اكتب رقم المبنى أو رقم المنزل.','Enter the building or house number.')}
  if(cartHasBf()){
   if(!checkout.date)e.date=L('اختر تاريخ البوفية.','Choose the buffet date.');
-  else if(checkout.date<todayISO())e.date=L('التاريخ مضى، اختر يوماً قادماً.','That date has passed. Choose an upcoming day.');
+  else if(checkout.date<tomorrowISO())e.date=L('نستقبل حجز البوفية قبلها بيوم على الأقل، اختر من بكرة وطالع.','Buffets must be booked at least one day ahead. Choose tomorrow or later.');
   if(!checkout.from)e.from=L('اختر وقت البداية.','Choose a start time.');
   else if(checkout.date){const a=tMin(checkout.from),b=checkout.to?tMin(checkout.to):a+BF_DEF_LEN*60;if(b<=a)e.to=L('وقت النهاية بعد وقت البداية.','The end time must be after the start time.');else if(!bfFits(checkout.date,a,b))e.from=L('هذا الوقت ما عاد متاحاً، اختر وقتاً آخر.','That time is no longer free. Choose another time.')}
   if(checkout.loc&&!/^https?:\/\/\S+$/.test(checkout.loc)&&!/^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(checkout.loc))e.loc=L('هذا ليس رابط خرائط. اضغط «حدد موقعي الحالي» أو الصق رابطاً من خرائط Google، أو اترك الخانة فارغة.','That is not a map link. Tap “Use my current location”, paste a Google Maps link, or leave it empty.');
