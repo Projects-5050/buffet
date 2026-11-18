@@ -1637,7 +1637,7 @@ const tomorrowISO=()=>{const d=new Date();d.setDate(d.getDate()+1);d.setMinutes(
 const fmtDate=iso=>{try{return new Date(iso+'T12:00').toLocaleDateString(lang==='en'?'en-GB':'ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long'})}catch(e){return iso}};
 const teaSel=()=>{const a=(store.teaSel||['f11']).filter(id=>byId(id));return a.length?[a[0]]:['f11']};
 const teaNames=(ids,en)=>(ids||[]).map(id=>{const m=byId(id);return m?(en?((MENU_EN[id]&&MENU_EN[id][0])||m.name):((m._ar&&m._ar[0])||m.name)):''}).filter(Boolean).join(en?' & ':' و');
-const BF_PER_DAY=2,BF_GAP=90,BF_OPEN=6,BF_CLOSE=23,BF_DEF_LEN=3,ORDER_WA='97366750818';
+const BF_PER_DAY=2,BF_GAP=90,BF_OPEN=6,BF_CLOSE=23,BF_DEF_LEN=3,ORDER_WA='97333787872';
 const tMin=t=>{const[h,m]=String(t||'0:0').split(':').map(Number);return h*60+(m||0)};
 const tStr=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
 function bfBooked(date){return store.orders.filter(o=>o.ev&&o.ev.date===date&&o.status!=='rejected'&&isBuffetOrder(o)).map(o=>{const a=tMin(o.ev.from);return{a,b:o.ev.to?tMin(o.ev.to):a+BF_DEF_LEN*60}})}
