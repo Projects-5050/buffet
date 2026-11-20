@@ -2087,7 +2087,7 @@ const ordJson=o=>JSON.stringify({id:o.id,brand:o.brand,items:o.items,type:o.type
 async function uploadOrder(o,tries=3){
  if(o.upl||!o.ordKey)return true;
  for(let i=0;i<tries;i++){
-  try{const res=await fetch(`${SB_URL}/storage/v1/object/${ORD_BUCKET}/${ORD_DIR}/${o.ordKey}.json`,{method:'POST',headers:{Authorization:'Bearer '+WA_KEY,apikey:WA_KEY,'Content-Type':'application/json','x-upsert':'false'},body:ordJson(o),keepalive:true});
+  try{const res=await fetch(`${SB_URL}/storage/v1/object/${ORD_BUCKET}/${ORD_DIR}/${o.ordKey}.json`,{method:'POST',headers:{Authorization:'Bearer '+WA_KEY,apikey:WA_KEY,'Content-Type':'application/json','x-upsert':'false'},body:ordJson(o)});
    if(res.ok||res.status===409){o.upl=1;save();return true}}catch(e){}
   await new Promise(r=>setTimeout(r,1500*(i+1)));
  }
@@ -2098,8 +2098,8 @@ async function showOrderLink(){
  const m=location.hash.match(/^#o=(FB-\d{3,7}-[a-z0-9]{10,24})$/);if(!m)return;
  let ov=document.getElementById('ord-view');if(!ov){ov=document.createElement('div');ov.id='ord-view';document.body.appendChild(ov)}
  ov.innerHTML=`<div class="ov-in"><div class="empty">${L('نفتح الطلب…','Opening the order…')}</div></div>`;
- try{const r=await fetch(`${SB_URL}/storage/v1/object/public/${ORD_BUCKET}/${ORD_DIR}/${m[1]}.json`,{cache:'no-store'});if(!r.ok)throw 0;
-  const o=await r.json();o.status='review';
+ try{const r=await fetch(`${SB_URL}/storage/v1/object/public/${ORD_BUCKET}/${ORD_DIR}/${m[1]}.json?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw 0;
+  var o=await r.json();o.status='review';
   const cv=await drawCard(o);const src=cv.toDataURL('image/jpeg',.88);
   ov._o=o;
   ov.innerHTML=`<div class="ov-in"><div class="ov-top"><b>${L('طلب','Order')} ${esc(o.id)}</b><a class="btn btn-soft" href="./">${L('إغلاق','Close')}</a></div>
@@ -2109,7 +2109,8 @@ async function showOrderLink(){
     <a class="btn btn-wa btn-block" target="_blank" rel="noopener" href="https://wa.me/973${esc(String(o.phone||'').replace(/\D/g,''))}">${L('واتساب الزبون','WhatsApp the customer')}</a>
     <button class="btn btn-soft btn-block" data-act="ov-pdf">${ic('download',18)}${L('حفظ الطلب PDF','Save order as PDF')}</button>
    </div></div>`;
- }catch(e){ov.innerHTML=`<div class="ov-in"><div class="empty">${L('ما لقينا هذا الطلب. ممكن الرابط ناقص أو الطلب ما انرفع.','Order not found. The link may be incomplete or the order was not uploaded.')}</div><a class="btn btn-soft btn-block" href="./">${L('رجوع','Back')}</a></div>`}
+ }catch(e){const loc=(store.orders||[]).find(x=>x.ordKey===m[1]);if(loc&&!showOrderLink._r){showOrderLink._r=1;loc.upl=0;uploadOrder(loc).then(ok=>{if(ok)showOrderLink()});}
+  ov.innerHTML=`<div class="ov-in"><div class="empty">${loc?L('نرفع الطلب من جديد، لحظات…','Re-uploading the order, one moment…'):L('ما لقينا هذا الطلب. ممكن الرابط ناقص أو الطلب ما انرفع.','Order not found. The link may be incomplete or the order was not uploaded.')}</div><a class="btn btn-soft btn-block" href="./">${L('رجوع','Back')}</a></div>`}
 }
 window.addEventListener('hashchange',showOrderLink);setTimeout(showOrderLink,0);
 // retry any order image that did not finish uploading (e.g. the phone left for WhatsApp)
