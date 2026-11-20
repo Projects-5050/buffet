@@ -1055,6 +1055,14 @@ h2.bf-h{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
 .date-wrap.has .date-ph{display:none}
 .date-wrap:not(.has) input[type=date]{color:transparent}
 .date-wrap svg{position:absolute;inset-inline-end:14px;top:50%;translate:0 -50%;color:var(--teal,#239298);pointer-events:none}
+.ao-form{display:flex;gap:8px;align-items:center}.ao-form .input{max-width:220px}
+.ao-list{display:flex;flex-direction:column}
+.ao-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:4px 14px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);text-decoration:none;color:inherit}
+.ao-row:hover{background:rgba(35,146,152,.06)}
+.ao-id{font-weight:700;color:#17666a;font-variant-numeric:tabular-nums}
+.ao-who{display:flex;flex-direction:column}.ao-who small,.ao-at{color:var(--muted);font-size:12.5px}
+.ao-ev{font-size:13.5px;font-weight:600;color:var(--orange-ink,#b4471a)}
+@media (max-width:640px){.ao-row{grid-template-columns:auto 1fr}.ao-ev,.ao-at{grid-column:2}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -1858,6 +1866,23 @@ function dayChart(os){
   return `<rect class="bar${days[i]===today?' today':''}" x="${x.toFixed(1)}" y="${y(v).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(v?2:0,h).toFixed(1)}" rx="${Math.min(4,w/2).toFixed(1)}"><title>${days[i]}: ${v}</title></rect>${v&&(n<=7)?`<text class="val" x="${(x+w/2).toFixed(1)}" y="${(y(v)-4).toFixed(1)}" text-anchor="middle">${v}</text>`:''}${lab?`<text x="${(x+w/2).toFixed(1)}" y="${H-6}" text-anchor="middle">${dd.getDate()}/${dd.getMonth()+1}</text>`:''}`}).join('');
  return `<div class="daychart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${L('عدد الطلبات في اليوم','Orders per day')}">${g}</svg></div>`;
 }
+let allOrd={state:'idle',list:[],err:''};
+const ORD_FN='https://lzadmbjhcxqvafykntsp.supabase.co/functions/v1/buffet-orders';
+function allOrdersHTML(){
+ const h=`<h3>${L('الطلبات','Orders')}<small>${L('من كل الأجهزة','From every device')}</small></h3>`;
+ if(allOrd.state==='idle'||allOrd.state==='err')return h+`<div class="ao-form"><input class="input" id="ao-code" type="password" inputmode="numeric" autocomplete="off" placeholder="${L('رمز الأدمن','Admin code')}"><button class="btn btn-main" data-act="ao-load">${L('عرض الطلبات','Show orders')}</button></div>${allOrd.err?`<span class="err">${allOrd.err}</span>`:''}`;
+ if(allOrd.state==='loading')return h+`<div class="empty">${L('نجيب الطلبات…','Loading orders…')}</div>`;
+ if(!allOrd.list.length)return h+`<div class="empty">${L('ما فيه طلبات محفوظة للحين.','No saved orders yet.')}</div>`;
+ return h+`<div class="ao-list">${allOrd.list.map(o=>{const ev=o.ev||{};const d=new Date(o.saved||o.at);return `<a class="ao-row" href="#o=${esc(o.key)}"><span class="ao-id">${esc(o.id)}</span><span class="ao-who"><b>${esc(o.name||'')}</b><small dir="ltr">+973 ${esc(o.phone||'')}</small></span><span class="ao-ev">${ev.date?esc(fmtDate(ev.date))+' · '+esc(fmtTime(ev.from||'')):''}</span><small class="ao-at">${d.toLocaleDateString(lang==='en'?'en-GB':'ar-BH-u-nu-latn',{day:'numeric',month:'short'})} ${d.toLocaleTimeString(lang==='en'?'en-GB':'ar-BH-u-nu-latn',{hour:'numeric',minute:'2-digit'})}</small></a>`}).join('')}</div><button class="btn btn-soft" data-act="ao-load" style="margin-top:10px">${L('تحديث','Refresh')}</button>`;
+}
+async function loadAllOrders(code){
+ allOrd={state:'loading',list:[],err:''};const el=$('#all-orders');if(el)el.innerHTML=allOrdersHTML();
+ try{const r=await fetch(ORD_FN,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+WA_KEY,apikey:WA_KEY},body:JSON.stringify({code})});const j=await r.json().catch(()=>({}));
+  if(j.ok){allOrd={state:'ok',list:j.orders||[],err:''};try{sessionStorage.setItem('fbq-ao',code)}catch(e){}}
+  else allOrd={state:'err',list:[],err:j.error==='bad_code'?L('الرمز غير صحيح.','Wrong code.'):j.error==='locked'?L('محاولات كثيرة، حاول بعد ربع ساعة.','Too many tries, try again in 15 minutes.'):L('ما قدرنا نجيب الطلبات.','Could not load orders.')};
+ }catch(e){allOrd={state:'err',list:[],err:L('تأكد من الاتصال بالإنترنت.','Check your internet connection.')}}
+ const e2=$('#all-orders');if(e2)e2.innerHTML=allOrdersHTML();
+}
 function renderAdmin(){
  const el=$('#v-admin');
  if(!isAdmin){
@@ -1898,6 +1923,7 @@ function renderAdmin(){
     <div class="kpi"><small>${L('متوسط الأشخاص للطلب','Avg people per order')}</small><b class="num">${bfo.length?Math.round(ppl/bfo.length):0}</b></div>
    </div>
    <div class="rgrid">
+    <section class="rcard wide" id="all-orders">${allOrdersHTML()}</section>
     <section class="rcard wide"><h3>${L('الطلبات في اليوم','Orders per day')}<small>${L('آخر','Last')} ${aPeriod==='30'||aPeriod==='all'?30:7} ${L('يوم','days')}</small></h3>${dayChart(os)}</section>
     <section class="rcard"><h3>${L('خطط البوفية','Buffet plans')}<small>${L('عدد الطلبات والإجمالي','Orders and total')}</small></h3>${hbars(plansRows,'',v=>v,true)}</section>
     <section class="rcard"><h3>${L('حالات الطلبات','Order status')}<small>${os.length} ${L('طلب','orders')}</small></h3>
@@ -2102,7 +2128,7 @@ async function showOrderLink(){
   var o=await r.json();o.status='review';
   const cv=await drawCard(o);const src=cv.toDataURL('image/jpeg',.88);
   ov._o=o;
-  ov.innerHTML=`<div class="ov-in"><div class="ov-top"><b>${L('طلب','Order')} ${esc(o.id)}</b><a class="btn btn-soft" href="./">${L('إغلاق','Close')}</a></div>
+  ov.innerHTML=`<div class="ov-in"><div class="ov-top"><b>${L('طلب','Order')} ${esc(o.id)}</b><button class="btn btn-soft" data-act="ov-close">${L('إغلاق','Close')}</button></div>
    <img class="ov-img" src="${src}" alt="${L('تفاصيل الطلب','Order details')}">
    <div class="pdf-acts">
     <a class="btn btn-main btn-block" href="tel:+973${esc(String(o.phone||'').replace(/\D/g,''))}">${L('اتصل بالزبون','Call the customer')}</a>
@@ -2110,9 +2136,9 @@ async function showOrderLink(){
     <button class="btn btn-soft btn-block" data-act="ov-pdf">${ic('download',18)}${L('حفظ الطلب PDF','Save order as PDF')}</button>
    </div></div>`;
  }catch(e){const loc=(store.orders||[]).find(x=>x.ordKey===m[1]);if(loc&&!showOrderLink._r){showOrderLink._r=1;loc.upl=0;uploadOrder(loc).then(ok=>{if(ok)showOrderLink()});}
-  ov.innerHTML=`<div class="ov-in"><div class="empty">${loc?L('نرفع الطلب من جديد، لحظات…','Re-uploading the order, one moment…'):L('ما لقينا هذا الطلب. ممكن الرابط ناقص أو الطلب ما انرفع.','Order not found. The link may be incomplete or the order was not uploaded.')}</div><a class="btn btn-soft btn-block" href="./">${L('رجوع','Back')}</a></div>`}
+  ov.innerHTML=`<div class="ov-in"><div class="empty">${loc?L('نرفع الطلب من جديد، لحظات…','Re-uploading the order, one moment…'):L('ما لقينا هذا الطلب. ممكن الرابط ناقص أو الطلب ما انرفع.','Order not found. The link may be incomplete or the order was not uploaded.')}</div><button class="btn btn-soft btn-block" data-act="ov-close">${L('رجوع','Back')}</button></div>`}
 }
-window.addEventListener('hashchange',showOrderLink);setTimeout(showOrderLink,0);
+window.addEventListener('hashchange',()=>{if(/^#o=/.test(location.hash))window.__ordFromApp=true;else{const ov=document.getElementById('ord-view');if(ov)ov.remove()}showOrderLink()});setTimeout(showOrderLink,0);
 // retry any order image that did not finish uploading (e.g. the phone left for WhatsApp)
 setTimeout(()=>{(store.orders||[]).filter(o=>o.ordKey&&!o.upl&&(store.mine||[]).includes(o.id)).forEach(o=>uploadOrder(o))},2500);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')(store.orders||[]).filter(o=>o.ordKey&&!o.upl&&(store.mine||[]).includes(o.id)).forEach(o=>uploadOrder(o))});
@@ -2271,6 +2297,8 @@ document.addEventListener('click',async e=>{
   case 'pdf-send':pdfOpen(id);break;
   case 'pdf-dl':{const o=store.orders.find(x=>x.id===id),r=o&&pdfCache.get(pdfKey(o));if(r)pdfDownload(r,id);break}
   case 'pdf-track':openSheet('track',id);break;
+  case 'ov-close':{const ov=document.getElementById('ord-view');if(ov)ov.remove();if(window.__ordFromApp)history.back();else location.hash='';break}
+  case 'ao-load':{let code='';try{code=sessionStorage.getItem('fbq-ao')||''}catch(e){}const f=$('#ao-code');if(f&&f.value.trim())code=f.value.trim();if(!code){toast(L('اكتب رمز الأدمن','Enter the admin code'));break}loadAllOrders(code);break}
   case 'ov-pdf':{const ov=document.getElementById('ord-view');if(!ov||!ov._o)break;try{const cv=await drawCard(ov._o);const jb=await new Promise(r=>cv.toBlob(r,'image/jpeg',.9));const blob=jpegPdf(new Uint8Array(await jb.arrayBuffer()),cv.width,cv.height);pdfDownload({blob,url:URL.createObjectURL(blob)},ov._o.id)}catch(e){toast(L('ما قدرنا نجهز الملف','Could not build the file'))}break}
   case 'up-retry':{const o=store.orders.find(x=>x.id===id);if(!o)break;waState[id]='linked';renderSheet();uploadOrder(o).then(ok=>{waState[id]=ok?'linked':'linkfail';if(sheetKind==='pdf'&&sheetArg===id)renderSheet()});break}
   case 'pdf-retry':{const o=store.orders.find(x=>x.id===id);if(o)pdfFail.delete(pdfKey(o));pdfOpen(id);break}
