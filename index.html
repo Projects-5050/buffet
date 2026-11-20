@@ -2114,7 +2114,7 @@ async function uploadOrder(o,tries=3){
  if(o.upl||!o.ordKey)return true;
  for(let i=0;i<tries;i++){
   try{const res=await fetch(`${SB_URL}/storage/v1/object/${ORD_BUCKET}/${ORD_DIR}/${o.ordKey}.json`,{method:'POST',headers:{Authorization:'Bearer '+WA_KEY,apikey:WA_KEY,'Content-Type':'application/json','x-upsert':'false'},body:ordJson(o)});
-   if(res.ok||res.status===409){o.upl=1;save();return true}}catch(e){}
+   if(res.ok||res.status===409){o.upl=1;save();try{fetch(ORD_FN,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+WA_KEY,apikey:WA_KEY},body:JSON.stringify({action:'archive',key:o.ordKey})}).catch(()=>{})}catch(e){}return true}}catch(e){}
   await new Promise(r=>setTimeout(r,1500*(i+1)));
  }
  return false;
