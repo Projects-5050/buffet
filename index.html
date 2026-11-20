@@ -1042,6 +1042,11 @@ h2.bf-h{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
 .o-del.armed{background:#c0261c;color:#fff;border-color:#c0261c}
 .upc-p .o-del,.tbl .o-del{margin-top:6px;margin-inline-start:0}
 .tbl .o-del{margin-top:0}
+#ord-view{position:fixed;inset:0;z-index:200;background:var(--bg,#eef1f0);overflow:auto;padding:16px}
+#ord-view .ov-in{max-width:620px;margin:0 auto;padding-bottom:40px}
+#ord-view a{text-decoration:none}
+#ord-view .ov-top{display:flex;justify-content:space-between;align-items:center;margin:4px 0 12px;font-size:19px}
+#ord-view .ov-img{display:block;width:100%;border-radius:14px;box-shadow:0 18px 34px -20px rgba(20,40,42,.5);margin-bottom:16px;background:#fff}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -2025,13 +2030,13 @@ async function makePdf(o){
  const r={blob,file,img,cv,url:URL.createObjectURL(blob),thumb:cv.toDataURL('image/jpeg',.6)};pdfCache.set(pdfKey(o),r);return r;
 }
 const isNewO=o=>o.status==='review';
-const custWaText=o=>isNewO(o)?`🔔 يوجد طلب بوفية جديد رقم ${o.id}\nالاسم: ${o.name}\nالهاتف: ${o.phone}${o.ev?`\nالموعد: ${o.ev.date} من ${o.ev.from}${o.ev.to?' إلى '+o.ev.to:''}`:''}${o.ev&&o.ev.tea?`\nالشاي: ${teaNames(o.ev.tea)}`:''}${o.imgUrl?`\n\nرابط الطلب:\n${o.imgUrl}`:''}`:(o.lang==='en'?`Hello ${o.name}, your order ${o.id} from Fareeq Bin Aqool is confirmed. The confirmation file is attached.`:`مرحباً ${o.name}، تم تأكيد طلبك رقم ${o.id} من فريج بن عاقول. مرفق ملف التأكيد.`);
+const custWaText=o=>isNewO(o)?`🔔 يوجد طلب بوفية جديد رقم ${o.id}\nالاسم: ${o.name}\nالهاتف: ${o.phone}${o.ev?`\nالموعد: ${o.ev.date} من ${o.ev.from}${o.ev.to?' إلى '+o.ev.to:''}`:''}${o.ev&&o.ev.tea?`\nالشاي: ${teaNames(o.ev.tea)}`:''}${o.link?`\n\nرابط الطلب:\n${o.link}`:''}`:(o.lang==='en'?`Hello ${o.name}, your order ${o.id} from Fareeq Bin Aqool is confirmed. The confirmation file is attached.`:`مرحباً ${o.name}، تم تأكيد طلبك رقم ${o.id} من فريج بن عاقول. مرفق ملف التأكيد.`);
 const custWaLink=o=>{const n=isNewO(o)?ORDER_WA:'973'+String(o.phone||'').replace(/\D/g,'').replace(/^973/,'');return n.length>3?`https://wa.me/${n}?text=${encodeURIComponent(custWaText(o))}`:''};
 function sPdf(id){
  const o=store.orders.find(x=>x.id===id);if(!o)return head(L('ملف التأكيد','Confirmation PDF'));
  const r=pdfCache.get(pdfKey(o)),nw=isNewO(o);
  const ws=waState[o.id];
- if(nw&&(ws==='linked'||ws==='linkfail'))return head(L('تم تجهيز طلبك ✓','Your order is ready ✓'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('صورة الطلب','Order image')}">`:'')+`<p style="color:var(--muted);margin:0 0 14px;text-align:center">${ws==='linkfail'?L('ما قدرنا نرفع صورة الطلب، تأكد من الإنترنت واضغط «حاول مرة ثانية».','We could not upload the order image. Check your internet and tap “Try again”.'):L('انفتحت محادثة المطعم فيها رابط طلبك. اضغط «إرسال» في الواتساب عشان يوصلنا.','The restaurant chat opened with your order link. Tap “Send” in WhatsApp so it reaches us.')}</p>
+ if(nw&&(ws==='linked'||ws==='linkfail'))return head(L('تم تجهيز طلبك ✓','Your order is ready ✓'))+(r?`<img class="pdf-prev" src="${r.thumb}" alt="${L('صورة الطلب','Order image')}">`:'')+`<p style="color:var(--muted);margin:0 0 14px;text-align:center">${ws==='linkfail'?L('ما قدرنا نحفظ الطلب، تأكد من الإنترنت واضغط «حاول مرة ثانية».','We could not save the order. Check your internet and tap “Try again”.'):L('انفتحت محادثة المطعم فيها رابط طلبك. اضغط «إرسال» في الواتساب عشان يوصلنا.','The restaurant chat opened with your order link. Tap “Send” in WhatsApp so it reaches us.')}</p>
  <div class="pdf-acts">${ws==='linkfail'?`<button class="btn btn-main btn-block" data-act="up-retry" data-id="${o.id}">${L('حاول مرة ثانية','Try again')}</button>`:''}
   <button class="btn btn-wa btn-block" data-act="wa-new" data-id="${o.id}">${L('افتح محادثة الواتساب مرة ثانية','Open the WhatsApp chat again')}</button>
   <button class="btn btn-soft btn-block" data-act="pdf-dl" data-id="${o.id}" ${r?'':'disabled'}>${ic('download',18)}${L('حفظ الطلب PDF','Save order as PDF')}</button>
@@ -2068,25 +2073,44 @@ async function waAutoSend(o){
 }
 const SB_URL='https://lzadmbjhcxqvafykntsp.supabase.co',ORD_BUCKET='buffet-orders',ORD_DIR='talabat';
 const rndTok=()=>{const a=new Uint8Array(12);crypto.getRandomValues(a);return [...a].map(x=>'abcdefghijklmnopqrstuvwxyz0123456789'[x%36]).join('')};
-function ensureImgUrl(o){if(!o.imgKey){o.imgKey=`${ORD_DIR}/${o.id}-${rndTok()}.jpg`;o.imgUrl=`${SB_URL}/storage/v1/object/public/${ORD_BUCKET}/${o.imgKey}`;save()}return o.imgUrl}
-async function uploadOrderImg(o,tries=3){
- if(o.upl||!o.imgKey)return true;
+const SITE='https://projects-5050.github.io/buffet/';
+function ensureLink(o){if(!o.ordKey){o.ordKey=`${o.id}-${rndTok()}`;o.link=`${SITE}#o=${o.ordKey}`;save()}return o.link}
+const ordJson=o=>JSON.stringify({id:o.id,brand:o.brand,items:o.items,type:o.type,branch:o.branch,address:o.address,name:o.name,phone:o.phone,status:'review',lang:o.lang,at:o.at,ev:o.ev});
+async function uploadOrder(o,tries=3){
+ if(o.upl||!o.ordKey)return true;
  for(let i=0;i<tries;i++){
-  try{let blob;if(draft&&draft.forId===o.id&&draft.file)blob=draft.file;else{const r=await makePdf(o);blob=r.img}
-   const res=await fetch(`${SB_URL}/storage/v1/object/${ORD_BUCKET}/${o.imgKey}`,{method:'POST',headers:{Authorization:'Bearer '+WA_KEY,apikey:WA_KEY,'Content-Type':'image/jpeg','x-upsert':'false'},body:blob,keepalive:blob.size<60000});
-   if(res.ok||res.status===409){o.upl=1;save();return true}
-  }catch(e){}
+  try{const res=await fetch(`${SB_URL}/storage/v1/object/${ORD_BUCKET}/${ORD_DIR}/${o.ordKey}.json`,{method:'POST',headers:{Authorization:'Bearer '+WA_KEY,apikey:WA_KEY,'Content-Type':'application/json','x-upsert':'false'},body:ordJson(o),keepalive:true});
+   if(res.ok||res.status===409){o.upl=1;save();return true}}catch(e){}
   await new Promise(r=>setTimeout(r,1500*(i+1)));
  }
  return false;
 }
+// order page: #o=<key> shows the order from the shared folder
+async function showOrderLink(){
+ const m=location.hash.match(/^#o=(FB-\d{3,7}-[a-z0-9]{10,24})$/);if(!m)return;
+ let ov=document.getElementById('ord-view');if(!ov){ov=document.createElement('div');ov.id='ord-view';document.body.appendChild(ov)}
+ ov.innerHTML=`<div class="ov-in"><div class="empty">${L('نفتح الطلب…','Opening the order…')}</div></div>`;
+ try{const r=await fetch(`${SB_URL}/storage/v1/object/public/${ORD_BUCKET}/${ORD_DIR}/${m[1]}.json`,{cache:'no-store'});if(!r.ok)throw 0;
+  const o=await r.json();o.status='review';
+  const cv=await drawCard(o);const src=cv.toDataURL('image/jpeg',.88);
+  ov._o=o;
+  ov.innerHTML=`<div class="ov-in"><div class="ov-top"><b>${L('طلب','Order')} ${esc(o.id)}</b><a class="btn btn-soft" href="./">${L('إغلاق','Close')}</a></div>
+   <img class="ov-img" src="${src}" alt="${L('تفاصيل الطلب','Order details')}">
+   <div class="pdf-acts">
+    <a class="btn btn-main btn-block" href="tel:+973${esc(String(o.phone||'').replace(/\D/g,''))}">${L('اتصل بالزبون','Call the customer')}</a>
+    <a class="btn btn-wa btn-block" target="_blank" rel="noopener" href="https://wa.me/973${esc(String(o.phone||'').replace(/\D/g,''))}">${L('واتساب الزبون','WhatsApp the customer')}</a>
+    <button class="btn btn-soft btn-block" data-act="ov-pdf">${ic('download',18)}${L('حفظ الطلب PDF','Save order as PDF')}</button>
+   </div></div>`;
+ }catch(e){ov.innerHTML=`<div class="ov-in"><div class="empty">${L('ما لقينا هذا الطلب. ممكن الرابط ناقص أو الطلب ما انرفع.','Order not found. The link may be incomplete or the order was not uploaded.')}</div><a class="btn btn-soft btn-block" href="./">${L('رجوع','Back')}</a></div>`}
+}
+window.addEventListener('hashchange',showOrderLink);setTimeout(showOrderLink,0);
 // retry any order image that did not finish uploading (e.g. the phone left for WhatsApp)
-setTimeout(()=>{(store.orders||[]).filter(o=>o.imgKey&&!o.upl&&(store.mine||[]).includes(o.id)).forEach(o=>uploadOrderImg(o))},2500);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')(store.orders||[]).filter(o=>o.imgKey&&!o.upl&&(store.mine||[]).includes(o.id)).forEach(o=>uploadOrderImg(o))});
+setTimeout(()=>{(store.orders||[]).filter(o=>o.ordKey&&!o.upl&&(store.mine||[]).includes(o.id)).forEach(o=>uploadOrder(o))},2500);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')(store.orders||[]).filter(o=>o.ordKey&&!o.upl&&(store.mine||[]).includes(o.id)).forEach(o=>uploadOrder(o))});
 function sendOrderNow(o){
  if(waAuto){openSheet('pdf',o.id);waAutoSend(o);return}
- ensureImgUrl(o);
- const up=uploadOrderImg(o);          // starts right away, before leaving for WhatsApp
+ ensureLink(o);
+ const up=uploadOrder(o);          // starts right away, before leaving for WhatsApp
  const w=custWaLink(o);if(w)window.open(w,'_blank','noopener');
  waState[o.id]='linked';openSheet('pdf',o.id);
  up.then(ok=>{waState[o.id]=ok?'linked':'linkfail';if(sheetKind==='pdf'&&sheetArg===o.id)renderSheet()});
@@ -2132,7 +2156,7 @@ function oCard(o){
  const rej=rejecting===o.id;
  return `<article class="ocard${fresh.has(o.id)?' fresh':''}">
   <div class="o-top"><span class="o-id">${o.id}</span><span class="chip chip-brand">${B.ar}</span>${o.sample?'<span class="chip chip-sample">'+L('مثال','Sample')+'</span>':''}${isAdmin?`<button type="button" class="o-del" data-act="ord-del" data-id="${o.id}" aria-label="${L('حذف الطلب','Delete order')} ${o.id}">${ic('trash',16)}<span>${L('حذف','Delete')}</span></button>`:''}</div>
-  <div class="o-who"><b>${esc(o.name)}</b>${o.imgUrl?`<a href="${esc(o.imgUrl)}" target="_blank" rel="noopener" style="color:var(--teal-ink,#17666a);font-weight:700">${ic('image',15)}${L('صورة الطلب','Order image')}</a>`:''}<span class="ltr" style="justify-content:flex-end;user-select:all">+973 ${esc(o.phone)}</span>
+  <div class="o-who"><b>${esc(o.name)}</b>${o.link?`<a href="${esc(o.link)}" target="_blank" rel="noopener" style="color:var(--teal-ink,#17666a);font-weight:700">${ic('image',15)}${L('رابط الطلب','Order link')}</a>`:''}<span class="ltr" style="justify-content:flex-end;user-select:all">+973 ${esc(o.phone)}</span>
    <span>${ic(o.type==='delivery'?'bike':'store',15)}${o.type==='delivery'?L('توصيل · ','Delivery · ')+esc(o.address):L('استلام · فرع ','Pickup · ')+branchName(o.branch)}</span>
    ${o.ev?`<span style="color:var(--orange-ink);font-weight:600">${ic('clock',15)}${esc(fmtDate(o.ev.date))} · ${fmtTime(o.ev.from)}${o.ev.to?' – '+fmtTime(o.ev.to):''}</span>${o.ev.tea?`<span style="color:var(--orange-ink);font-weight:600">☕ ${esc(teaNames(o.ev.tea,lang==='en'))}</span>`:''}${o.ev.loc?`<a href="${esc(o.ev.loc)}" target="_blank" rel="noopener" style="color:var(--orange-ink);font-weight:600;display:inline-flex;gap:4px;align-items:center">${ic('pin',15)}${L('الموقع على الخريطة','Location on the map')}</a>`:''}`:''}
    <span>${ic('clock',15)}${clock(o.at)} · ${timeAgo(o.at)}</span></div>
@@ -2238,7 +2262,8 @@ document.addEventListener('click',async e=>{
   case 'pdf-send':pdfOpen(id);break;
   case 'pdf-dl':{const o=store.orders.find(x=>x.id===id),r=o&&pdfCache.get(pdfKey(o));if(r)pdfDownload(r,id);break}
   case 'pdf-track':openSheet('track',id);break;
-  case 'up-retry':{const o=store.orders.find(x=>x.id===id);if(!o)break;waState[id]='linked';renderSheet();uploadOrderImg(o).then(ok=>{waState[id]=ok?'linked':'linkfail';if(sheetKind==='pdf'&&sheetArg===id)renderSheet()});break}
+  case 'ov-pdf':{const ov=document.getElementById('ord-view');if(!ov||!ov._o)break;try{const cv=await drawCard(ov._o);const jb=await new Promise(r=>cv.toBlob(r,'image/jpeg',.9));const blob=jpegPdf(new Uint8Array(await jb.arrayBuffer()),cv.width,cv.height);pdfDownload({blob,url:URL.createObjectURL(blob)},ov._o.id)}catch(e){toast(L('ما قدرنا نجهز الملف','Could not build the file'))}break}
+  case 'up-retry':{const o=store.orders.find(x=>x.id===id);if(!o)break;waState[id]='linked';renderSheet();uploadOrder(o).then(ok=>{waState[id]=ok?'linked':'linkfail';if(sheetKind==='pdf'&&sheetArg===id)renderSheet()});break}
   case 'pdf-retry':{const o=store.orders.find(x=>x.id===id);if(o)pdfFail.delete(pdfKey(o));pdfOpen(id);break}
   case 'wa-new':{const o=store.orders.find(x=>x.id===id),w=o&&custWaLink(o);if(w)window.open(w,'_blank','noopener');break}
   case 'pdf-wa':{const o=store.orders.find(x=>x.id===id),r=o&&pdfCache.get(pdfKey(o));if(!o||!r)break;
