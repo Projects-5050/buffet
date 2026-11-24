@@ -1063,6 +1063,10 @@ h2.bf-h{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
 .ao-who{display:flex;flex-direction:column}.ao-who small,.ao-at{color:var(--muted);font-size:12.5px}
 .ao-ev{font-size:13.5px;font-weight:600;color:var(--orange-ink,#b4471a)}
 @media (max-width:640px){.ao-row{grid-template-columns:auto 1fr}.ao-ev,.ao-at{grid-column:2}}
+.m-banner{position:relative}
+.visits{position:absolute;top:12px;inset-inline-end:12px;z-index:2;display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;background:rgba(20,30,32,.42);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#fff;font-size:12.5px;font-weight:600;border:1px solid rgba(255,255,255,.22)}
+.visits b{font-weight:800;font-variant-numeric:tabular-nums}
+.visits[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -1507,7 +1511,7 @@ function renderMenu(){
    <nav class="cats" aria-label="${L('الأقسام','Categories')}">${B.cats.map(([c,n],i)=>`<button class="cat${c==='bread'?' bf-only':''}" data-act="cat" data-cat="${c}" aria-current="${i===0}">${n}</button>`).join('')}</nav>
   </div></header>
   <div class="wrap">
-   <div class="m-hero"><div class="m-banner"><img src="${B.banner}" alt=""><div class="m-cap"><h1 id="menu-h">${B.hero}</h1></div></div></div>
+   <div class="m-hero"><div class="m-banner"><img src="${B.banner}" alt=""><span class="visits"${visits.total?'':' hidden'} aria-live="polite">${visitsHTML()}</span><div class="m-cap"><h1 id="menu-h">${B.hero}</h1></div></div></div>
    ${secs}
    <div class="m-end"></div>
   </div>
@@ -1660,6 +1664,16 @@ const tomorrowISO=()=>{const d=new Date();d.setDate(d.getDate()+1);d.setMinutes(
 const fmtDate=iso=>{try{return new Date(iso+'T12:00').toLocaleDateString(lang==='en'?'en-GB':'ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long'})}catch(e){return iso}};
 const teaSel=()=>{const a=(store.teaSel||['f11']).filter(id=>byId(id));return a.length?[a[0]]:['f11']};
 const teaNames=(ids,en)=>(ids||[]).map(id=>{const m=byId(id);return m?(en?((MENU_EN[id]&&MENU_EN[id][0])||m.name):((m._ar&&m._ar[0])||m.name)):''}).filter(Boolean).join(en?' & ':' و');
+let visits={total:0,today:0};
+const visitsHTML=()=>`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><b class="num">${Number(visits.total).toLocaleString('en-US')}</b> ${L('زائر','visitors')}`;
+function countVisit(){
+ if(/^#(board|admin|o=)/.test(location.hash))return;
+ let vid='';try{vid=localStorage.getItem('fbq-vid')||'';if(!/^[a-z0-9]{8,40}$/.test(vid)){const a=new Uint8Array(12);crypto.getRandomValues(a);vid=[...a].map(x=>'abcdefghijklmnopqrstuvwxyz0123456789'[x%36]).join('');localStorage.setItem('fbq-vid',vid)}}catch(e){}
+ const K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6YWRtYmpoY3hxdmFmeWtudHNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NjQwOTYsImV4cCI6MjEwNTA0MDA5Nn0.HNGwF8_lHrUHU_Xhx9Ymn0eoLHGaJ2GVd69umNNkXCI';
+ fetch('https://lzadmbjhcxqvafykntsp.supabase.co/rest/v1/rpc/buffet_visit',{method:'POST',headers:{'Content-Type':'application/json',apikey:K,Authorization:'Bearer '+K},body:JSON.stringify({p_vid:vid||null,p_mobile:matchMedia('(pointer:coarse)').matches})})
+  .then(r=>r.ok?r.json():null).then(j=>{if(!j||!j.total)return;visits=j;document.querySelectorAll('.visits').forEach(el=>{el.innerHTML=visitsHTML();el.hidden=false})}).catch(()=>{});
+}
+setTimeout(countVisit,600);
 const BF_PER_DAY=2,BF_GAP=90,BF_OPEN=6,BF_CLOSE=23,BF_DEF_LEN=3,ORDER_WA='97366750818';
 const tMin=t=>{const[h,m]=String(t||'0:0').split(':').map(Number);return h*60+(m||0)};
 const tStr=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
